@@ -223,7 +223,7 @@ export default function CreateProperty() {
                                     </Label>
                                     <Input
                                         id="photos"
-                                        name="photos"
+                                        name="photos[]"
                                         type="file"
                                         multiple
                                         accept="image/jpeg,image/png,image/webp"
