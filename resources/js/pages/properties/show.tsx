@@ -1,5 +1,12 @@
-import { Head, Link } from '@inertiajs/react';
+import { Form, Head, Link } from '@inertiajs/react';
 import { ArrowLeft, Bath, BedDouble, MapPin, Maximize } from 'lucide-react';
+import { store } from '@/actions/App/Http/Controllers/PropertyInquiryController';
+import InputError from '@/components/input-error';
+import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import { Spinner } from '@/components/ui/spinner';
+import { Textarea } from '@/components/ui/textarea';
 import { home } from '@/routes';
 
 type PropertyPhoto = {
@@ -117,6 +124,100 @@ export default function PropertyShow({ property }: { property: Property }) {
                     </div>
                 </div>
             </div>
+
+            <section className="mt-12 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+                <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
+                    <div>
+                        <h2 className="text-xl font-semibold tracking-tight">
+                            Consulta esta propiedad
+                        </h2>
+                        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+                            Déjanos tus datos y la inmobiliaria se pondrá en
+                            contacto contigo.
+                        </p>
+                    </div>
+
+                    <div className="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                        <Form
+                            {...store.form(property.id)}
+                            className="space-y-4"
+                            options={{ preserveScroll: true }}
+                            resetOnSuccess
+                            noValidate
+                        >
+                            {({ processing, errors }) => (
+                                <>
+                                    <div className="grid gap-4 sm:grid-cols-2">
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="inquiry-name">
+                                                Nombre
+                                            </Label>
+                                            <Input
+                                                id="inquiry-name"
+                                                name="name"
+                                                maxLength={255}
+                                                autoComplete="name"
+                                            />
+                                            <InputError message={errors.name} />
+                                        </div>
+
+                                        <div className="grid gap-2">
+                                            <Label htmlFor="inquiry-email">
+                                                Email
+                                            </Label>
+                                            <Input
+                                                id="inquiry-email"
+                                                name="email"
+                                                type="email"
+                                                maxLength={255}
+                                                autoComplete="email"
+                                            />
+                                            <InputError
+                                                message={errors.email}
+                                            />
+                                        </div>
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="inquiry-phone">
+                                            Teléfono{' '}
+                                            <span className="font-normal text-neutral-500 dark:text-neutral-400">
+                                                (opcional)
+                                            </span>
+                                        </Label>
+                                        <Input
+                                            id="inquiry-phone"
+                                            name="phone"
+                                            type="tel"
+                                            maxLength={20}
+                                            autoComplete="tel"
+                                        />
+                                        <InputError message={errors.phone} />
+                                    </div>
+
+                                    <div className="grid gap-2">
+                                        <Label htmlFor="inquiry-message">
+                                            Mensaje
+                                        </Label>
+                                        <Textarea
+                                            id="inquiry-message"
+                                            name="message"
+                                            rows={4}
+                                            placeholder="Cuéntanos qué te interesa de la propiedad."
+                                        />
+                                        <InputError message={errors.message} />
+                                    </div>
+
+                                    <Button type="submit" disabled={processing}>
+                                        {processing && <Spinner />}
+                                        Enviar consulta
+                                    </Button>
+                                </>
+                            )}
+                        </Form>
+                    </div>
+                </div>
+            </section>
         </>
     );
 }
