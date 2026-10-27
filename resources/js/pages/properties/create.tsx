@@ -8,11 +8,13 @@ import InputError from '@/components/input-error';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
+import { NativeSelect } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
-
-const selectClassName =
-    'border-input flex h-9 w-full min-w-0 rounded-md border bg-transparent px-3 py-1 text-base shadow-xs transition-[color,box-shadow] outline-none focus-visible:border-ring focus-visible:ring-ring/50 focus-visible:ring-[3px] disabled:pointer-events-none disabled:cursor-not-allowed disabled:opacity-50 md:text-sm dark:bg-input/30';
+import {
+    propertyOperationOptions,
+    propertyTypeOptions,
+} from '@/lib/property-options';
 
 export default function CreateProperty() {
     return (
@@ -42,17 +44,22 @@ export default function CreateProperty() {
                                         <Label htmlFor="operation">
                                             Operación
                                         </Label>
-                                        <select
+                                        <NativeSelect
                                             id="operation"
                                             name="operation"
                                             defaultValue="sale"
-                                            className={selectClassName}
                                         >
-                                            <option value="sale">Venta</option>
-                                            <option value="rent">
-                                                Alquiler
-                                            </option>
-                                        </select>
+                                            {propertyOperationOptions.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </NativeSelect>
                                         <InputError
                                             message={errors.operation}
                                         />
@@ -60,17 +67,22 @@ export default function CreateProperty() {
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="type">Tipo</Label>
-                                        <select
+                                        <NativeSelect
                                             id="type"
                                             name="type"
                                             defaultValue="house"
-                                            className={selectClassName}
                                         >
-                                            <option value="house">Casa</option>
-                                            <option value="apartment">
-                                                Departamento
-                                            </option>
-                                        </select>
+                                            {propertyTypeOptions.map(
+                                                (option) => (
+                                                    <option
+                                                        key={option.value}
+                                                        value={option.value}
+                                                    >
+                                                        {option.label}
+                                                    </option>
+                                                ),
+                                            )}
+                                        </NativeSelect>
                                         <InputError message={errors.type} />
                                     </div>
                                 </div>
@@ -121,11 +133,10 @@ export default function CreateProperty() {
 
                                     <div className="grid gap-2">
                                         <Label htmlFor="currency">Moneda</Label>
-                                        <select
+                                        <NativeSelect
                                             id="currency"
                                             name="currency"
                                             defaultValue="PEN"
-                                            className={selectClassName}
                                         >
                                             <option value="PEN">
                                                 Soles (PEN)
@@ -133,7 +144,7 @@ export default function CreateProperty() {
                                             <option value="USD">
                                                 Dólares (USD)
                                             </option>
-                                        </select>
+                                        </NativeSelect>
                                         <InputError message={errors.currency} />
                                     </div>
                                 </div>
