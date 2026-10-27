@@ -5,16 +5,11 @@ import {
 } from '@/actions/App/Http/Controllers/PropertyController';
 import Heading from '@/components/heading';
 import InputError from '@/components/input-error';
+import PropertyFormFields from '@/components/property-form-fields';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { NativeSelect } from '@/components/ui/native-select';
 import { Spinner } from '@/components/ui/spinner';
-import { Textarea } from '@/components/ui/textarea';
-import {
-    propertyOperationOptions,
-    propertyTypeOptions,
-} from '@/lib/property-options';
 
 export default function CreateProperty() {
     return (
@@ -34,194 +29,7 @@ export default function CreateProperty() {
                 >
                     {({ processing, errors, progress }) => (
                         <>
-                            <section className="space-y-4">
-                                <h2 className="text-base font-semibold">
-                                    Datos de la propiedad
-                                </h2>
-
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="operation">
-                                            Operación
-                                        </Label>
-                                        <NativeSelect
-                                            id="operation"
-                                            name="operation"
-                                            defaultValue="sale"
-                                        >
-                                            {propertyOperationOptions.map(
-                                                (option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </NativeSelect>
-                                        <InputError
-                                            message={errors.operation}
-                                        />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="type">Tipo</Label>
-                                        <NativeSelect
-                                            id="type"
-                                            name="type"
-                                            defaultValue="house"
-                                        >
-                                            {propertyTypeOptions.map(
-                                                (option) => (
-                                                    <option
-                                                        key={option.value}
-                                                        value={option.value}
-                                                    >
-                                                        {option.label}
-                                                    </option>
-                                                ),
-                                            )}
-                                        </NativeSelect>
-                                        <InputError message={errors.type} />
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="title">Título</Label>
-                                    <Input
-                                        id="title"
-                                        name="title"
-                                        maxLength={255}
-                                        placeholder="Casa frente al parque"
-                                    />
-                                    <InputError message={errors.title} />
-                                </div>
-
-                                <div className="grid gap-2">
-                                    <Label htmlFor="description">
-                                        Descripción
-                                    </Label>
-                                    <Textarea
-                                        id="description"
-                                        name="description"
-                                        rows={5}
-                                        placeholder="Describe la propiedad, sus ambientes y acabados."
-                                    />
-                                    <InputError message={errors.description} />
-                                </div>
-                            </section>
-
-                            <section className="space-y-4">
-                                <h2 className="text-base font-semibold">
-                                    Precio y ubicación
-                                </h2>
-
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="price">Precio</Label>
-                                        <Input
-                                            id="price"
-                                            name="price"
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            placeholder="250000"
-                                        />
-                                        <InputError message={errors.price} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="currency">Moneda</Label>
-                                        <NativeSelect
-                                            id="currency"
-                                            name="currency"
-                                            defaultValue="PEN"
-                                        >
-                                            <option value="PEN">
-                                                Soles (PEN)
-                                            </option>
-                                            <option value="USD">
-                                                Dólares (USD)
-                                            </option>
-                                        </NativeSelect>
-                                        <InputError message={errors.currency} />
-                                    </div>
-                                </div>
-
-                                <div className="grid gap-4 sm:grid-cols-2">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="city">Ciudad</Label>
-                                        <Input
-                                            id="city"
-                                            name="city"
-                                            placeholder="Lima"
-                                        />
-                                        <InputError message={errors.city} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="zone">Zona</Label>
-                                        <Input
-                                            id="zone"
-                                            name="zone"
-                                            placeholder="Miraflores"
-                                        />
-                                        <InputError message={errors.zone} />
-                                    </div>
-                                </div>
-                            </section>
-
-                            <section className="space-y-4">
-                                <h2 className="text-base font-semibold">
-                                    Detalles
-                                </h2>
-
-                                <div className="grid gap-4 sm:grid-cols-3">
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="bedrooms">
-                                            Dormitorios
-                                        </Label>
-                                        <Input
-                                            id="bedrooms"
-                                            name="bedrooms"
-                                            type="number"
-                                            min="0"
-                                            step="1"
-                                            placeholder="3"
-                                        />
-                                        <InputError message={errors.bedrooms} />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="bathrooms">Baños</Label>
-                                        <Input
-                                            id="bathrooms"
-                                            name="bathrooms"
-                                            type="number"
-                                            min="0"
-                                            step="1"
-                                            placeholder="2"
-                                        />
-                                        <InputError
-                                            message={errors.bathrooms}
-                                        />
-                                    </div>
-
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="area">Área (m²)</Label>
-                                        <Input
-                                            id="area"
-                                            name="area"
-                                            type="number"
-                                            min="0.01"
-                                            step="0.01"
-                                            placeholder="120.50"
-                                        />
-                                        <InputError message={errors.area} />
-                                    </div>
-                                </div>
-                            </section>
+                            <PropertyFormFields errors={errors} />
 
                             <section className="space-y-4">
                                 <h2 className="text-base font-semibold">
@@ -259,11 +67,20 @@ export default function CreateProperty() {
                                 </div>
 
                                 {progress && (
-                                    <div className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800">
+                                    <div
+                                        className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
+                                        role="progressbar"
+                                        aria-label="Subiendo fotos"
+                                        aria-valuemin={0}
+                                        aria-valuemax={100}
+                                        aria-valuenow={Math.round(
+                                            progress.percentage ?? 0,
+                                        )}
+                                    >
                                         <div
                                             className="h-full bg-neutral-900 transition-all dark:bg-neutral-100"
                                             style={{
-                                                width: `${progress.percentage}%`,
+                                                width: `${progress.percentage ?? 0}%`,
                                             }}
                                         />
                                     </div>

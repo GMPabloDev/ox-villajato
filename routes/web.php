@@ -21,6 +21,17 @@ Route::post('properties/{property}/inquiries', [PropertyInquiryController::class
     ->middleware('throttle:property-inquiry')
     ->name('properties.inquiries.store');
 
+Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
+    Route::get('properties', [PropertyController::class, 'panelIndex'])
+        ->name('properties.index');
+
+    Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
+        ->name('properties.edit');
+
+    Route::put('properties/{property}', [PropertyController::class, 'update'])
+        ->name('properties.update');
+});
+
 Route::middleware(['auth', 'verified'])->group(function () {
     Route::inertia('dashboard', 'dashboard')->name('dashboard');
 });

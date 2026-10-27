@@ -5,20 +5,27 @@ namespace App\Http\Controllers;
 use App\Enums\PropertyOperation;
 use App\Enums\PropertyType;
 use App\Http\Requests\StorePropertyRequest;
+use App\Http\Requests\UpdatePropertyRequest;
 use App\Http\Resources\PropertyResource;
 use App\Models\Property;
+use App\Models\PropertyPhoto;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use Throwable;
 
 class PropertyController extends Controller
 {
+    private const TEMPORARY_POSITION_OFFSET = 100;
+
     public function index(Request $request): Response|RedirectResponse
     {
         $validator = Validator::make(
@@ -92,6 +99,56 @@ class PropertyController extends Controller
         return Inertia::render('properties/create');
     }
 
+    public function panelIndex(): Response
+    {
+        $properties = Property::query()
+            ->with('photos')
+            ->latest('id')
+            ->get();
+
+        return Inertia::render('panel/properties/index', [
+            'properties' => $properties
+                ->map(fn (Property $property): array => [
+                    ...(new PropertyResource($property))->resolve(),
+                    'edit_url' => route('panel.properties.edit', $property),
+                ])
+                ->all(),
+            'create_url' => route('properties.create'),
+        ]);
+    }
+
+    public function edit(Property $property): Response
+    {
+        $property->load('photos');
+
+        $disk = (string) config('properties.photos_disk');
+
+        return Inertia::render('panel/properties/edit', [
+            'property' => [
+                'id' => $property->id,
+                'operation' => $property->operation->value,
+                'type' => $property->type->value,
+                'title' => $property->title,
+                'description' => $property->description,
+                'price' => $property->price,
+                'currency' => $property->currency->value,
+                'city' => $property->city,
+                'zone' => $property->zone,
+                'bedrooms' => $property->bedrooms,
+                'bathrooms' => $property->bathrooms,
+                'area' => $property->area,
+                'photos' => $property->photos
+                    ->map(fn (PropertyPhoto $photo): array => [
+                        'id' => $photo->id,
+                        'url' => Storage::disk($disk)->url($photo->path),
+                        'position' => $photo->position,
+                    ])
+                    ->values()
+                    ->all(),
+            ],
+        ]);
+    }
+
     public function store(StorePropertyRequest $request): RedirectResponse
     {
         $validated = $request->validated();
@@ -114,6 +171,73 @@ class PropertyController extends Controller
         }
 
         return redirect()->route('properties.show', $property);
+    }
+
+    public function update(UpdatePropertyRequest $request, Property $property): RedirectResponse
+    {
+        $validated = $request->validated();
+
+        /** @var array<int, int> $photoOrder */
+        $photoOrder = array_values(array_map('intval', (array) ($validated['photo_order'] ?? [])));
+
+        /** @var array<int, UploadedFile> $newPhotos */
+        $newPhotos = array_values((array) ($validated['photos'] ?? []));
+
+        unset($validated['photo_order'], $validated['photos']);
+
+        $directory = (string) config('properties.photos_directory');
+        $disk = (string) config('properties.photos_disk');
+
+        /** @var array<int, string> $removedPaths */
+        $removedPaths = [];
+
+        /** @var array<int, string> $storedPaths */
+        $storedPaths = [];
+
+        try {
+            DB::transaction(function () use ($property, $validated, $photoOrder, $newPhotos, $directory, $disk, &$removedPaths, &$storedPaths): void {
+                $property->update($validated);
+
+                $removed = $property->photos()->whereNotIn('id', $photoOrder)->get();
+
+                $removedPaths = $removed->pluck('path')->all();
+
+                $property->photos()->whereKey($removed->modelKeys())->delete();
+
+                foreach ($photoOrder as $index => $photoId) {
+                    $property->photos()
+                        ->where('id', $photoId)
+                        ->update(['position' => self::TEMPORARY_POSITION_OFFSET + $index]);
+                }
+
+                foreach ($photoOrder as $index => $photoId) {
+                    $property->photos()->where('id', $photoId)->update(['position' => $index + 1]);
+                }
+
+                foreach ($newPhotos as $index => $photo) {
+                    $path = $photo->storePublicly($directory, $disk);
+                    $storedPaths[] = $path;
+
+                    $property->photos()->create([
+                        'path' => $path,
+                        'position' => count($photoOrder) + $index + 1,
+                    ]);
+                }
+            });
+        } catch (Throwable $exception) {
+            Storage::disk($disk)->delete($storedPaths);
+
+            throw $exception;
+        }
+
+        Storage::disk($disk)->delete($removedPaths);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Propiedad actualizada.',
+        ]);
+
+        return to_route('properties.show', $property);
     }
 
     public function show(Property $property): Response
