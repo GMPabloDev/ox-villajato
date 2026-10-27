@@ -15,3 +15,9 @@ Inmobiliaria única en Perú. Casas y departamentos en venta y alquiler. Recorri
 - [Historia 1 — Publicar propiedad](stories/01-publicar-propiedad.md)
 - [Historia 2 — Consulta desde la ficha](stories/02-consulta-desde-la-ficha.md)
 - [Historia 3 — Filtrar el catálogo](stories/03-filtrar-catalogo.md)
+- [Historia 4 — Editar propiedad](stories/04-editar-propiedad.md)
+
+## Deuda técnica
+
+- **Listado del panel:** paginar y reducir el payload de `/panel/properties` para enviar solo portada, título, precio y enlace de edición; hoy trae todas las propiedades con descripción y todas sus fotos. Queda fuera de la historia 4 y de la historia 1, que excluye “Paginación y búsqueda”.
+- **Controller del panel:** separar `panelIndex`, `edit` y `update` de `PropertyController` en un controller propio del panel, para no mezclar el catálogo público con la gestión interna. Es un refactor sin cambio de comportamiento.
