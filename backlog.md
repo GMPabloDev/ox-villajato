@@ -13,3 +13,4 @@ Inmobiliaria única en Perú. Casas y departamentos en venta y alquiler. Recorri
 ## Historias refinadas
 
 - [Historia 1 — Publicar propiedad](stories/01-publicar-propiedad.md)
+- [Historia 2 — Consulta desde la ficha](stories/02-consulta-desde-la-ficha.md)
