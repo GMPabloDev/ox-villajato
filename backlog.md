@@ -8,7 +8,7 @@ Inmobiliaria única en Perú. Casas y departamentos en venta y alquiler. Recorri
 2. Como visitante, quiero enviar una consulta desde la ficha de una propiedad, para que la inmobiliaria reciba mis datos y pueda contactarme. Requires: #1
 3. Como visitante, quiero filtrar el catálogo por operación, tipo y zona, para encontrar las propiedades que me interesan. Requires: #1
 4. Como miembro de la inmobiliaria, quiero editar una propiedad publicada, para corregir su precio, descripción, fotos o datos. Requires: #1
-5. Como miembro de la inmobiliaria, quiero marcar una propiedad como vendida o alquilada, para que deje de aparecer como disponible. Requires: #1
+5. Como miembro de la inmobiliaria, quiero marcar una propiedad como vendida o alquilada, para que deje de aparecer como disponible. Requires: #1, #4
 
 ## Historias refinadas
 
@@ -16,6 +16,7 @@ Inmobiliaria única en Perú. Casas y departamentos en venta y alquiler. Recorri
 - [Historia 2 — Consulta desde la ficha](stories/02-consulta-desde-la-ficha.md)
 - [Historia 3 — Filtrar el catálogo](stories/03-filtrar-catalogo.md)
 - [Historia 4 — Editar propiedad](stories/04-editar-propiedad.md)
+- [Historia 5 — Marcar vendida o alquilada](stories/05-marcar-vendida-alquilada.md)
 
 ## Deuda técnica
 
