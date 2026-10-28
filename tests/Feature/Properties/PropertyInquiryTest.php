@@ -98,6 +98,36 @@ class PropertyInquiryTest extends TestCase
         $this->assertStringNotContainsString($dangerousContent, $emailHtml);
     }
 
+    public function test_closed_property_inquiry_returns_not_found_without_sending_an_email(): void
+    {
+        Mail::fake();
+
+        $property = Property::factory()->create([
+            'operation' => 'sale',
+            'status' => 'sold',
+        ]);
+
+        $this->post(route('properties.inquiries.store', $property), $this->validPayload())
+            ->assertNotFound();
+
+        Mail::assertNothingSent();
+    }
+
+    public function test_closed_property_inquiry_with_invalid_payload_returns_not_found_without_sending_an_email(): void
+    {
+        Mail::fake();
+
+        $property = Property::factory()->create([
+            'operation' => 'sale',
+            'status' => 'sold',
+        ]);
+
+        $this->post(route('properties.inquiries.store', $property), [])
+            ->assertNotFound();
+
+        Mail::assertNothingSent();
+    }
+
     public function test_inquiry_is_rejected_when_name_email_or_message_is_missing_without_sending_an_email(): void
     {
         Mail::fake();

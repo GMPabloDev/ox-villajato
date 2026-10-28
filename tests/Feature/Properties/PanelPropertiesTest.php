@@ -44,6 +44,61 @@ class PanelPropertiesTest extends TestCase
             );
     }
 
+    public function test_panel_list_shows_each_property_status_and_the_action_that_corresponds(): void
+    {
+        $sale = Property::factory()->create([
+            'operation' => 'sale',
+            'title' => 'Casa en venta',
+            'status' => 'available',
+        ]);
+        $rent = Property::factory()->create([
+            'operation' => 'rent',
+            'title' => 'Departamento en alquiler',
+            'status' => 'available',
+        ]);
+        $sold = Property::factory()->create([
+            'operation' => 'sale',
+            'title' => 'Casa vendida',
+            'status' => 'sold',
+        ]);
+        $rented = Property::factory()->create([
+            'operation' => 'rent',
+            'title' => 'Departamento alquilado',
+            'status' => 'rented',
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)->get(route('panel.properties.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/properties/index')
+                ->has('properties', 4)
+                ->where('properties.0.id', $rented->id)
+                ->where('properties.0.status', 'rented')
+                ->where('properties.0.status_label', 'Alquilada')
+                ->where('properties.0.status_action', 'reopen')
+                ->where('properties.0.status_action_label', 'Volver a disponible')
+                ->where('properties.1.id', $sold->id)
+                ->where('properties.1.status', 'sold')
+                ->where('properties.1.status_label', 'Vendida')
+                ->where('properties.1.status_action', 'reopen')
+                ->where('properties.1.status_action_label', 'Volver a disponible')
+                ->where('properties.2.id', $rent->id)
+                ->where('properties.2.status', 'available')
+                ->where('properties.2.status_label', 'Disponible')
+                ->where('properties.2.status_action', 'close')
+                ->where('properties.2.status_action_label', 'Marcar como alquilada')
+                ->where('properties.3.id', $sale->id)
+                ->where('properties.3.status', 'available')
+                ->where('properties.3.status_label', 'Disponible')
+                ->where('properties.3.status_action', 'close')
+                ->where('properties.3.status_action_label', 'Marcar como vendida')
+            );
+    }
+
     public function test_panel_list_is_empty_with_a_publish_action_when_there_are_no_properties(): void
     {
         $user = User::factory()->create();
@@ -182,6 +237,118 @@ class PanelPropertiesTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->where('properties.0.title', 'Departamento renovado')
                 ->where('properties.0.price_formatted', 'US$ 1,500')
+            );
+    }
+
+    public function test_editing_a_closed_property_without_changing_operation_keeps_it_closed_and_out_of_the_catalog(): void
+    {
+        $property = Property::factory()->create([
+            'operation' => 'sale',
+            'title' => 'Casa frente al parque',
+            'zone' => 'Miraflores',
+            'status' => 'sold',
+        ]);
+
+        $property->photos()->create(['path' => 'properties/cover.jpg', 'position' => 1]);
+        $photoId = $property->photos()->sole()->id;
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->from(route('panel.properties.edit', $property))
+            ->put(route('panel.properties.update', $property), [
+                ...$this->scalarPayload($property, [
+                    'title' => 'Casa frente al parque remodelada',
+                    'description' => 'Descripción actualizada.',
+                    'price' => 260000,
+                    'currency' => 'PEN',
+                ]),
+                'photo_order' => [$photoId],
+            ]);
+
+        $response
+            ->assertRedirect(route('panel.properties.index'))
+            ->assertInertiaFlash('toast', [
+                'type' => 'success',
+                'message' => 'Propiedad actualizada.',
+            ]);
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'title' => 'Casa frente al parque remodelada',
+            'status' => 'sold',
+        ]);
+
+        $this->get(route('properties.show', $property))->assertNotFound();
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('properties', 0)
+                ->where('zones', [])
+            );
+
+        $this->get(route('panel.properties.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('properties.0.id', $property->id)
+                ->where('properties.0.status_label', 'Vendida')
+            );
+    }
+
+    public function test_changing_the_operation_when_editing_reopens_the_property_in_the_catalog(): void
+    {
+        $property = Property::factory()->create([
+            'operation' => 'sale',
+            'title' => 'Casa frente al parque',
+            'zone' => 'Miraflores',
+            'status' => 'sold',
+        ]);
+
+        $property->photos()->create(['path' => 'properties/cover.jpg', 'position' => 1]);
+        $photoId = $property->photos()->sole()->id;
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->from(route('panel.properties.edit', $property))
+            ->put(route('panel.properties.update', $property), [
+                ...$this->scalarPayload($property, [
+                    'operation' => 'rent',
+                    'title' => 'Casa frente al parque en alquiler',
+                    'description' => 'Descripción actualizada.',
+                    'price' => 1500,
+                    'currency' => 'USD',
+                ]),
+                'photo_order' => [$photoId],
+            ]);
+
+        $response
+            ->assertRedirect(route('properties.show', $property))
+            ->assertInertiaFlash('toast', [
+                'type' => 'success',
+                'message' => 'Propiedad actualizada.',
+            ]);
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'operation' => 'rent',
+            'status' => 'available',
+        ]);
+
+        $this->get(route('properties.show', $property))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->where('property.title', 'Casa frente al parque en alquiler')
+                ->where('property.operation_label', 'Alquiler')
+            );
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('properties', 1)
+                ->where('properties.0.id', $property->id)
+                ->where('zones', ['Miraflores'])
             );
     }
 

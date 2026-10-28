@@ -6,11 +6,34 @@ use App\Models\Property;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
 use Inertia\Testing\AssertableInertia as Assert;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 class PropertyPageTest extends TestCase
 {
     use RefreshDatabase;
+
+    /**
+     * @return array<string, array{0: string, 1: string}>
+     */
+    public static function closedStatuses(): array
+    {
+        return [
+            'sold' => ['sale', 'sold'],
+            'rented' => ['rent', 'rented'],
+        ];
+    }
+
+    #[DataProvider('closedStatuses')]
+    public function test_closed_property_page_returns_not_found(string $operation, string $status): void
+    {
+        $property = Property::factory()->create([
+            'operation' => $operation,
+            'status' => $status,
+        ]);
+
+        $this->get(route('properties.show', $property))->assertNotFound();
+    }
 
     public function test_guest_can_open_a_property_page_and_see_all_its_data_and_photos(): void
     {
