@@ -164,7 +164,7 @@ export default function PropertiesIndex({
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
                         <Building2 className="mb-3 size-10 text-neutral-400" />
                         <p className="font-medium">
-                            Aún no hay propiedades publicadas.
+                            No hay propiedades disponibles.
                         </p>
                         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                             Vuelve pronto para ver las nuevas propiedades.

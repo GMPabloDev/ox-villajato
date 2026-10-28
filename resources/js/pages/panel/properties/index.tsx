@@ -1,14 +1,32 @@
-import { Head, Link } from '@inertiajs/react';
+import { Head, Link, useForm } from '@inertiajs/react';
 import { Building2, PlusCircle } from 'lucide-react';
-import { panelIndex } from '@/actions/App/Http/Controllers/PropertyController';
+import { useState } from 'react';
+import {
+    close,
+    panelIndex,
+    reopen,
+} from '@/actions/App/Http/Controllers/PropertyController';
 import Heading from '@/components/heading';
+import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
+import {
+    Dialog,
+    DialogContent,
+    DialogDescription,
+    DialogFooter,
+    DialogHeader,
+    DialogTitle,
+} from '@/components/ui/dialog';
+import { Spinner } from '@/components/ui/spinner';
 
 type PanelProperty = {
     id: number;
     title: string;
     price_formatted: string;
     cover_photo_url: string | null;
+    status_label: string;
+    status_action: 'close' | 'reopen';
+    status_action_label: string;
     edit_url: string;
 };
 
@@ -19,6 +37,32 @@ export default function PanelPropertiesIndex({
     properties: PanelProperty[];
     create_url: string;
 }) {
+    const [pendingProperty, setPendingProperty] =
+        useState<PanelProperty | null>(null);
+    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const { submit, processing } = useForm({});
+
+    function requestStatusChange(property: PanelProperty) {
+        setPendingProperty(property);
+        setIsDialogOpen(true);
+    }
+
+    function confirmStatusChange() {
+        if (!pendingProperty) {
+            return;
+        }
+
+        const action =
+            pendingProperty.status_action === 'close'
+                ? close(pendingProperty.id)
+                : reopen(pendingProperty.id);
+
+        submit(action.method, action.url, {
+            preserveScroll: true,
+            onSuccess: () => setIsDialogOpen(false),
+        });
+    }
+
     return (
         <>
             <Head title="Propiedades" />
@@ -74,27 +118,89 @@ export default function PanelPropertiesIndex({
                                     )}
                                 </div>
                                 <div className="space-y-3 p-4">
-                                    <h2 className="line-clamp-2 font-semibold">
-                                        {property.title}
-                                    </h2>
+                                    <div className="flex flex-wrap items-start justify-between gap-2">
+                                        <h2 className="line-clamp-2 font-semibold">
+                                            {property.title}
+                                        </h2>
+                                        <Badge
+                                            variant={
+                                                property.status_action ===
+                                                'close'
+                                                    ? 'secondary'
+                                                    : 'outline'
+                                            }
+                                        >
+                                            {property.status_label}
+                                        </Badge>
+                                    </div>
                                     <p className="text-lg font-semibold">
                                         {property.price_formatted}
                                     </p>
-                                    <Button
-                                        asChild
-                                        variant="outline"
-                                        className="w-full"
-                                    >
-                                        <Link href={property.edit_url}>
-                                            Editar
-                                        </Link>
-                                    </Button>
+                                    <div className="grid gap-2">
+                                        <Button
+                                            type="button"
+                                            variant={
+                                                property.status_action ===
+                                                'close'
+                                                    ? 'default'
+                                                    : 'outline'
+                                            }
+                                            className="w-full"
+                                            onClick={() =>
+                                                requestStatusChange(property)
+                                            }
+                                        >
+                                            {property.status_action_label}
+                                        </Button>
+                                        <Button
+                                            asChild
+                                            variant="outline"
+                                            className="w-full"
+                                        >
+                                            <Link href={property.edit_url}>
+                                                Editar
+                                            </Link>
+                                        </Button>
+                                    </div>
                                 </div>
                             </li>
                         ))}
                     </ul>
                 )}
             </div>
+
+            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>
+                            {pendingProperty?.status_action_label}
+                        </DialogTitle>
+                        <DialogDescription>
+                            {pendingProperty?.status_action === 'close'
+                                ? `«${pendingProperty?.title}» dejará de aparecer en el catálogo y su ficha pública ya no estará disponible.`
+                                : `«${pendingProperty?.title}» volverá a aparecer en el catálogo y su ficha pública estará disponible.`}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <DialogFooter>
+                        <Button
+                            type="button"
+                            variant="outline"
+                            disabled={processing}
+                            onClick={() => setIsDialogOpen(false)}
+                        >
+                            Cancelar
+                        </Button>
+                        <Button
+                            type="button"
+                            disabled={processing}
+                            onClick={confirmStatusChange}
+                        >
+                            {processing && <Spinner />}
+                            Confirmar
+                        </Button>
+                    </DialogFooter>
+                </DialogContent>
+            </Dialog>
         </>
     );
 }

@@ -2,6 +2,7 @@
 
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyInquiryController;
+use App\Http\Middleware\EnsurePropertyIsAvailable;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PropertyController::class, 'index'])->name('home');
@@ -15,10 +16,11 @@ Route::post('properties', [PropertyController::class, 'store'])
     ->name('properties.store');
 
 Route::get('properties/{property}', [PropertyController::class, 'show'])
+    ->middleware(EnsurePropertyIsAvailable::class)
     ->name('properties.show');
 
 Route::post('properties/{property}/inquiries', [PropertyInquiryController::class, 'store'])
-    ->middleware('throttle:property-inquiry')
+    ->middleware([EnsurePropertyIsAvailable::class, 'throttle:property-inquiry'])
     ->name('properties.inquiries.store');
 
 Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
@@ -27,6 +29,12 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
 
     Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
         ->name('properties.edit');
+
+    Route::patch('properties/{property}/close', [PropertyController::class, 'close'])
+        ->name('properties.close');
+
+    Route::patch('properties/{property}/reopen', [PropertyController::class, 'reopen'])
+        ->name('properties.reopen');
 
     Route::put('properties/{property}', [PropertyController::class, 'update'])
         ->name('properties.update');

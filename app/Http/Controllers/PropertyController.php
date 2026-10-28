@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Enums\PropertyOperation;
+use App\Enums\PropertyStatus;
 use App\Enums\PropertyType;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
@@ -58,6 +59,7 @@ class PropertyController extends Controller
         $filters = $validator->validated();
 
         $properties = Property::query()
+            ->available()
             ->with('photos')
             ->when(
                 $filters['operation'] ?? null,
@@ -75,6 +77,7 @@ class PropertyController extends Controller
             ->get();
 
         $zones = Property::query()
+            ->available()
             ->distinct()
             ->pluck('zone')
             ->sortBy(fn (string $zone): string => Str::lower(Str::ascii($zone)))
@@ -110,11 +113,41 @@ class PropertyController extends Controller
             'properties' => $properties
                 ->map(fn (Property $property): array => [
                     ...(new PropertyResource($property))->resolve(),
+                    'status' => $property->status->value,
+                    'status_label' => $property->status->label(),
+                    'status_action' => $property->status->action(),
+                    'status_action_label' => $property->status->actionLabel($property->operation),
                     'edit_url' => route('panel.properties.edit', $property),
                 ])
                 ->all(),
             'create_url' => route('properties.create'),
         ]);
+    }
+
+    public function close(Property $property): RedirectResponse
+    {
+        $status = $property->operation->closedStatus();
+
+        $property->update(['status' => $status]);
+
+        return $this->redirectToPanelWithStatus($status);
+    }
+
+    public function reopen(Property $property): RedirectResponse
+    {
+        $property->update(['status' => PropertyStatus::Available]);
+
+        return $this->redirectToPanelWithStatus(PropertyStatus::Available);
+    }
+
+    private function redirectToPanelWithStatus(PropertyStatus $status): RedirectResponse
+    {
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Propiedad marcada como '.Str::lower($status->label()).'.',
+        ]);
+
+        return to_route('panel.properties.index');
     }
 
     public function edit(Property $property): Response
@@ -196,7 +229,12 @@ class PropertyController extends Controller
 
         try {
             DB::transaction(function () use ($property, $validated, $photoOrder, $newPhotos, $directory, $disk, &$removedPaths, &$storedPaths): void {
-                $property->update($validated);
+                $operationChanged = $property->operation->value !== $validated['operation'];
+
+                $property->update([
+                    ...$validated,
+                    ...($operationChanged ? ['status' => PropertyStatus::Available] : []),
+                ]);
 
                 $removed = $property->photos()->whereNotIn('id', $photoOrder)->get();
 
@@ -237,7 +275,9 @@ class PropertyController extends Controller
             'message' => 'Propiedad actualizada.',
         ]);
 
-        return to_route('properties.show', $property);
+        return $property->isAvailable()
+            ? to_route('properties.show', $property)
+            : to_route('panel.properties.index');
     }
 
     public function show(Property $property): Response

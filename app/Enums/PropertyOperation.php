@@ -14,4 +14,12 @@ enum PropertyOperation: string
             self::Rent => 'Alquiler',
         };
     }
+
+    public function closedStatus(): PropertyStatus
+    {
+        return match ($this) {
+            self::Sale => PropertyStatus::Sold,
+            self::Rent => PropertyStatus::Rented,
+        };
+    }
 }

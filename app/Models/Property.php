@@ -4,9 +4,12 @@ namespace App\Models;
 
 use App\Enums\Currency;
 use App\Enums\PropertyOperation;
+use App\Enums\PropertyStatus;
 use App\Enums\PropertyType;
 use Database\Factories\PropertyFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
+use Illuminate\Database\Eloquent\Attributes\Scope;
+use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Model;
@@ -16,6 +19,7 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property PropertyOperation $operation
+ * @property PropertyStatus $status
  * @property PropertyType $type
  * @property string $title
  * @property string $description
@@ -30,7 +34,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $updated_at
  * @property-read Collection<int, PropertyPhoto> $photos
  */
-#[Fillable(['operation', 'type', 'title', 'description', 'price', 'currency', 'city', 'zone', 'bedrooms', 'bathrooms', 'area'])]
+#[Fillable(['operation', 'status', 'type', 'title', 'description', 'price', 'currency', 'city', 'zone', 'bedrooms', 'bathrooms', 'area'])]
 class Property extends Model
 {
     /** @use HasFactory<PropertyFactory> */
@@ -45,6 +49,7 @@ class Property extends Model
     {
         return [
             'operation' => PropertyOperation::class,
+            'status' => PropertyStatus::class,
             'type' => PropertyType::class,
             'price' => 'decimal:2',
             'currency' => Currency::class,
@@ -60,5 +65,16 @@ class Property extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(PropertyPhoto::class)->orderBy('position');
+    }
+
+    public function isAvailable(): bool
+    {
+        return $this->status === PropertyStatus::Available;
+    }
+
+    #[Scope]
+    protected function available(Builder $query): Builder
+    {
+        return $query->where('status', PropertyStatus::Available);
     }
 }
