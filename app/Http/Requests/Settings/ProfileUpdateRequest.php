@@ -2,13 +2,22 @@
 
 namespace App\Http\Requests\Settings;
 
+use App\Concerns\NormalizesEmail;
 use App\Concerns\ProfileValidationRules;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\FormRequest;
 
 class ProfileUpdateRequest extends FormRequest
 {
-    use ProfileValidationRules;
+    use NormalizesEmail, ProfileValidationRules;
+
+    /**
+     * Prepare the data for validation.
+     */
+    protected function prepareForValidation(): void
+    {
+        $this->normalizeEmail();
+    }
 
     /**
      * Get the validation rules that apply to the request.

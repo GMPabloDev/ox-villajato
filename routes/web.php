@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Controllers\AgentController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyInquiryController;
 use App\Http\Middleware\EnsurePropertyIsAvailable;
@@ -7,13 +8,13 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', [PropertyController::class, 'index'])->name('home');
 
-Route::get('properties/create', [PropertyController::class, 'create'])
-    ->middleware('auth')
-    ->name('properties.create');
+Route::middleware(['auth', 'can:manage-properties'])->group(function () {
+    Route::get('properties/create', [PropertyController::class, 'create'])
+        ->name('properties.create');
 
-Route::post('properties', [PropertyController::class, 'store'])
-    ->middleware('auth')
-    ->name('properties.store');
+    Route::post('properties', [PropertyController::class, 'store'])
+        ->name('properties.store');
+});
 
 Route::get('properties/{property}', [PropertyController::class, 'show'])
     ->middleware(EnsurePropertyIsAvailable::class)
@@ -24,20 +25,30 @@ Route::post('properties/{property}/inquiries', [PropertyInquiryController::class
     ->name('properties.inquiries.store');
 
 Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
-    Route::get('properties', [PropertyController::class, 'panelIndex'])
-        ->name('properties.index');
+    Route::middleware('can:manage-agents')->group(function () {
+        Route::get('agents/create', [AgentController::class, 'create'])
+            ->name('agents.create');
 
-    Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
-        ->name('properties.edit');
+        Route::post('agents', [AgentController::class, 'store'])
+            ->name('agents.store');
+    });
 
-    Route::patch('properties/{property}/close', [PropertyController::class, 'close'])
-        ->name('properties.close');
+    Route::middleware('can:manage-properties')->group(function () {
+        Route::get('properties', [PropertyController::class, 'panelIndex'])
+            ->name('properties.index');
 
-    Route::patch('properties/{property}/reopen', [PropertyController::class, 'reopen'])
-        ->name('properties.reopen');
+        Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
+            ->name('properties.edit');
 
-    Route::put('properties/{property}', [PropertyController::class, 'update'])
-        ->name('properties.update');
+        Route::patch('properties/{property}/close', [PropertyController::class, 'close'])
+            ->name('properties.close');
+
+        Route::patch('properties/{property}/reopen', [PropertyController::class, 'reopen'])
+            ->name('properties.reopen');
+
+        Route::put('properties/{property}', [PropertyController::class, 'update'])
+            ->name('properties.update');
+    });
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {
