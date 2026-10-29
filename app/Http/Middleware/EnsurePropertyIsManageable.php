@@ -2,6 +2,7 @@
 
 namespace App\Http\Middleware;
 
+use App\Enums\PropertyStatus;
 use App\Models\Property;
 use App\Models\User;
 use Closure;
@@ -20,7 +21,12 @@ class EnsurePropertyIsManageable
         $property = $request->route('property');
         $user = $request->user();
 
-        if (! $property instanceof Property || ! $user instanceof User || $user->cannot('update', $property)) {
+        if (
+            ! $property instanceof Property
+            || ! $user instanceof User
+            || $property->status === PropertyStatus::Archived
+            || $user->cannot('update', $property)
+        ) {
             abort(404);
         }
 

@@ -5,6 +5,7 @@ namespace App\Enums;
 enum PropertyStatus: string
 {
     case Available = 'available';
+    case Archived = 'archived';
     case Sold = 'sold';
     case Rented = 'rented';
 
@@ -14,10 +15,11 @@ enum PropertyStatus: string
             self::Available => 'Disponible',
             self::Sold => 'Vendida',
             self::Rented => 'Alquilada',
+            self::Archived => 'Archivada',
         };
     }
 
-    public function actionLabel(PropertyOperation $operation): string
+    public function actionLabel(PropertyOperation $operation): ?string
     {
         return match ($this) {
             self::Available => match ($operation) {
@@ -25,14 +27,16 @@ enum PropertyStatus: string
                 PropertyOperation::Rent => 'Marcar como alquilada',
             },
             self::Sold, self::Rented => 'Volver a disponible',
+            self::Archived => null,
         };
     }
 
-    public function action(): string
+    public function action(): ?string
     {
         return match ($this) {
             self::Available => 'close',
             self::Sold, self::Rented => 'reopen',
+            self::Archived => null,
         };
     }
 }

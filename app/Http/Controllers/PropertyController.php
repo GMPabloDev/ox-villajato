@@ -107,6 +107,7 @@ class PropertyController extends Controller
         $user = $request->user();
 
         $properties = Property::query()
+            ->where('status', '!=', PropertyStatus::Archived)
             ->when(! $user->isAdmin(), fn (Builder $query): Builder => $query->whereBelongsTo($user))
             ->with('photos')
             ->latest('id')
@@ -136,6 +137,13 @@ class PropertyController extends Controller
         return $this->redirectToPanelWithStatus($status);
     }
 
+    public function archive(Property $property): RedirectResponse
+    {
+        $property->update(['status' => PropertyStatus::Archived]);
+
+        return $this->redirectToPanelWithStatus(PropertyStatus::Archived, 'Propiedad archivada.');
+    }
+
     public function reopen(Property $property): RedirectResponse
     {
         $property->update(['status' => PropertyStatus::Available]);
@@ -143,11 +151,11 @@ class PropertyController extends Controller
         return $this->redirectToPanelWithStatus(PropertyStatus::Available);
     }
 
-    private function redirectToPanelWithStatus(PropertyStatus $status): RedirectResponse
+    private function redirectToPanelWithStatus(PropertyStatus $status, ?string $message = null): RedirectResponse
     {
         Inertia::flash('toast', [
             'type' => 'success',
-            'message' => 'Propiedad marcada como '.Str::lower($status->label()).'.',
+            'message' => $message ?? 'Propiedad marcada como '.Str::lower($status->label()).'.',
         ]);
 
         return to_route('panel.properties.index');

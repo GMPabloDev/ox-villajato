@@ -50,6 +50,10 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
         Route::patch('properties/{property}/close', [PropertyController::class, 'close'])
             ->name('properties.close');
 
+        Route::patch('properties/{property}/archive', [PropertyController::class, 'archive'])
+            ->middleware(EnsurePropertyIsAvailable::class)
+            ->name('properties.archive');
+
         Route::patch('properties/{property}/reopen', [PropertyController::class, 'reopen'])
             ->name('properties.reopen');
     });

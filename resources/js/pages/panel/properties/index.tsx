@@ -2,6 +2,7 @@ import { Head, Link, useForm } from '@inertiajs/react';
 import { Building2, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 import {
+    archive,
     close,
     panelIndex,
     reopen,
@@ -19,15 +20,23 @@ import {
 } from '@/components/ui/dialog';
 import { Spinner } from '@/components/ui/spinner';
 
+type PendingAction = 'archive' | 'close' | 'reopen';
+
 type PanelProperty = {
     id: number;
     title: string;
     price_formatted: string;
     cover_photo_url: string | null;
+    status: 'available' | 'archived' | 'sold' | 'rented';
     status_label: string;
-    status_action: 'close' | 'reopen';
-    status_action_label: string;
+    status_action: 'close' | 'reopen' | null;
+    status_action_label: string | null;
     edit_url: string;
+};
+
+type PendingConfirmation = {
+    property: PanelProperty;
+    action: PendingAction;
 };
 
 export default function PanelPropertiesIndex({
@@ -37,31 +46,46 @@ export default function PanelPropertiesIndex({
     properties: PanelProperty[];
     create_url: string;
 }) {
-    const [pendingProperty, setPendingProperty] =
-        useState<PanelProperty | null>(null);
-    const [isDialogOpen, setIsDialogOpen] = useState(false);
+    const [pendingConfirmation, setPendingConfirmation] =
+        useState<PendingConfirmation | null>(null);
     const { submit, processing } = useForm({});
 
     function requestStatusChange(property: PanelProperty) {
-        setPendingProperty(property);
-        setIsDialogOpen(true);
-    }
-
-    function confirmStatusChange() {
-        if (!pendingProperty) {
+        if (property.status_action === null) {
             return;
         }
 
+        setPendingConfirmation({
+            property,
+            action: property.status_action,
+        });
+    }
+
+    function requestArchive(property: PanelProperty) {
+        setPendingConfirmation({ property, action: 'archive' });
+    }
+
+    function confirmPendingAction() {
+        if (pendingConfirmation === null) {
+            return;
+        }
+
+        const { action: pendingAction, property } = pendingConfirmation;
         const action =
-            pendingProperty.status_action === 'close'
-                ? close(pendingProperty.id)
-                : reopen(pendingProperty.id);
+            pendingAction === 'archive'
+                ? archive(property.id)
+                : pendingAction === 'close'
+                  ? close(property.id)
+                  : reopen(property.id);
 
         submit(action.method, action.url, {
             preserveScroll: true,
-            onSuccess: () => setIsDialogOpen(false),
+            onSuccess: () => setPendingConfirmation(null),
         });
     }
+
+    const pendingProperty = pendingConfirmation?.property;
+    const pendingAction = pendingConfirmation?.action;
 
     return (
         <>
@@ -124,8 +148,7 @@ export default function PanelPropertiesIndex({
                                         </h2>
                                         <Badge
                                             variant={
-                                                property.status_action ===
-                                                'close'
+                                                property.status === 'available'
                                                     ? 'secondary'
                                                     : 'outline'
                                             }
@@ -137,21 +160,41 @@ export default function PanelPropertiesIndex({
                                         {property.price_formatted}
                                     </p>
                                     <div className="grid gap-2">
-                                        <Button
-                                            type="button"
-                                            variant={
-                                                property.status_action ===
-                                                'close'
-                                                    ? 'default'
-                                                    : 'outline'
-                                            }
-                                            className="w-full"
-                                            onClick={() =>
-                                                requestStatusChange(property)
-                                            }
-                                        >
-                                            {property.status_action_label}
-                                        </Button>
+                                        {property.status_action !== null &&
+                                            property.status_action_label !==
+                                                null && (
+                                                <Button
+                                                    type="button"
+                                                    variant={
+                                                        property.status ===
+                                                        'available'
+                                                            ? 'default'
+                                                            : 'outline'
+                                                    }
+                                                    className="w-full"
+                                                    onClick={() =>
+                                                        requestStatusChange(
+                                                            property,
+                                                        )
+                                                    }
+                                                >
+                                                    {
+                                                        property.status_action_label
+                                                    }
+                                                </Button>
+                                            )}
+                                        {property.status === 'available' && (
+                                            <Button
+                                                type="button"
+                                                variant="outline"
+                                                className="w-full"
+                                                onClick={() =>
+                                                    requestArchive(property)
+                                                }
+                                            >
+                                                Archivar
+                                            </Button>
+                                        )}
                                         <Button
                                             asChild
                                             variant="outline"
@@ -169,16 +212,29 @@ export default function PanelPropertiesIndex({
                 )}
             </div>
 
-            <Dialog open={isDialogOpen} onOpenChange={setIsDialogOpen}>
+            <Dialog
+                open={pendingConfirmation !== null}
+                onOpenChange={(open) => {
+                    if (!open) {
+                        setPendingConfirmation(null);
+                    }
+                }}
+            >
                 <DialogContent>
                     <DialogHeader>
                         <DialogTitle>
-                            {pendingProperty?.status_action_label}
+                            {pendingAction === 'archive'
+                                ? 'Archivar propiedad'
+                                : pendingProperty?.status_action_label}
                         </DialogTitle>
                         <DialogDescription>
-                            {pendingProperty?.status_action === 'close'
-                                ? `«${pendingProperty?.title}» dejará de aparecer en el catálogo y su ficha pública ya no estará disponible.`
-                                : `«${pendingProperty?.title}» volverá a aparecer en el catálogo y su ficha pública estará disponible.`}
+                            {pendingAction === 'archive'
+                                ? `«${pendingProperty?.title}» dejará de aparecer en el listado normal y en el catálogo público. No se marcará como vendida ni alquilada.`
+                                : pendingProperty?.status_action === 'close'
+                                  ? `«${pendingProperty?.title}» dejará de aparecer en el catálogo y su ficha pública ya no estará disponible.`
+                                  : pendingProperty
+                                    ? `«${pendingProperty.title}» volverá a aparecer en el catálogo y su ficha pública estará disponible.`
+                                    : null}
                         </DialogDescription>
                     </DialogHeader>
                     <DialogFooter>
@@ -186,14 +242,14 @@ export default function PanelPropertiesIndex({
                             type="button"
                             variant="outline"
                             disabled={processing}
-                            onClick={() => setIsDialogOpen(false)}
+                            onClick={() => setPendingConfirmation(null)}
                         >
                             Cancelar
                         </Button>
                         <Button
                             type="button"
                             disabled={processing}
-                            onClick={confirmStatusChange}
+                            onClick={confirmPendingAction}
                         >
                             {processing && <Spinner />}
                             Confirmar
