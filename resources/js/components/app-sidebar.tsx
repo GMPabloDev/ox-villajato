@@ -4,6 +4,7 @@ import {
     Building2,
     FolderGit2,
     LayoutGrid,
+    MessageSquare,
     PlusCircle,
     UserPlus,
 } from 'lucide-react';
@@ -20,6 +21,7 @@ import {
     SidebarMenuButton,
     SidebarMenuItem,
 } from '@/components/ui/sidebar';
+import { index as inquiriesIndex } from '@/actions/App/Http/Controllers/PropertyInquiryController';
 import { dashboard } from '@/routes';
 import { create as createAgent } from '@/actions/App/Http/Controllers/AgentController';
 import {
@@ -55,6 +57,15 @@ export function AppSidebar() {
             href: panelIndex(),
             icon: Building2,
         },
+        ...(auth.user.role === 'agent'
+            ? [
+                  {
+                      title: 'Consultas',
+                      href: inquiriesIndex(),
+                      icon: MessageSquare,
+                  },
+              ]
+            : []),
         {
             title: 'Publicar propiedad',
             href: createProperty(),

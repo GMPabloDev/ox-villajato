@@ -35,6 +35,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Collection<int, PropertyPhoto> $photos
+ * @property-read Collection<int, PropertyInquiry> $inquiries
  */
 #[Fillable(['operation', 'status', 'type', 'title', 'description', 'price', 'currency', 'city', 'zone', 'bedrooms', 'bathrooms', 'area'])]
 class Property extends Model
@@ -75,6 +76,14 @@ class Property extends Model
     public function photos(): HasMany
     {
         return $this->hasMany(PropertyPhoto::class)->orderBy('position');
+    }
+
+    /**
+     * @return HasMany<PropertyInquiry, $this>
+     */
+    public function inquiries(): HasMany
+    {
+        return $this->hasMany(PropertyInquiry::class);
     }
 
     public function isAvailable(): bool

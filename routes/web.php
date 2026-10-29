@@ -37,6 +37,9 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
     Route::get('properties', [PropertyController::class, 'panelIndex'])
         ->name('properties.index');
 
+    Route::get('inquiries', [PropertyInquiryController::class, 'index'])
+        ->name('inquiries.index');
+
     Route::middleware(EnsurePropertyIsManageable::class)->group(function () {
         Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
             ->name('properties.edit');
