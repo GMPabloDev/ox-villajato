@@ -93,13 +93,28 @@ class PropertyStatusTest extends TestCase
             );
     }
 
-    public function test_reopening_a_closed_property_marks_it_available_and_returns_it_to_catalog_zones_and_public_page(): void
+    /**
+     * @return array<string, array{0: string, 1: string, 2: string}>
+     */
+    public static function closedPropertyStatuses(): array
     {
+        return [
+            'sold property' => ['sale', 'sold', 'Marcar como vendida'],
+            'rented property' => ['rent', 'rented', 'Marcar como alquilada'],
+        ];
+    }
+
+    #[DataProvider('closedPropertyStatuses')]
+    public function test_reopening_a_closed_property_marks_it_available_and_returns_it_to_catalog_zones_and_public_page(
+        string $operation,
+        string $status,
+        string $availableActionLabel,
+    ): void {
         $property = Property::factory()->create([
-            'operation' => 'sale',
+            'operation' => $operation,
             'title' => 'Casa frente al parque',
             'zone' => 'Miraflores',
-            'status' => 'sold',
+            'status' => $status,
         ]);
 
         $this->get(route('home'))
@@ -132,7 +147,7 @@ class PropertyStatusTest extends TestCase
                 ->where('properties.0.id', $property->id)
                 ->where('properties.0.status', 'available')
                 ->where('properties.0.status_label', 'Disponible')
-                ->where('properties.0.status_action_label', 'Marcar como vendida')
+                ->where('properties.0.status_action_label', $availableActionLabel)
             );
 
         $this->get(route('home'))
@@ -144,6 +159,37 @@ class PropertyStatusTest extends TestCase
             );
 
         $this->get(route('properties.show', $property))->assertOk();
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function statusesThatCannotBeReopened(): array
+    {
+        return [
+            'available' => ['available'],
+            'archived' => ['archived'],
+        ];
+    }
+
+    #[DataProvider('statusesThatCannotBeReopened')]
+    public function test_reopening_a_property_that_is_not_closed_returns_404_and_preserves_its_status(string $status): void
+    {
+        $property = Property::factory()->create([
+            'status' => $status,
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->patch(route('panel.properties.reopen', $property));
+
+        $response->assertNotFound();
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'status' => $status,
+        ]);
     }
 
     public function test_guest_cannot_close_or_reopen_a_property(): void

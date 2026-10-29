@@ -5,6 +5,7 @@ namespace Tests\Feature\Properties;
 use App\Models\Property;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Mail;
 use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
@@ -244,6 +245,249 @@ class PropertyArchivingTest extends TestCase
             'id' => $property->id,
             'user_id' => $owner->id,
             'status' => 'available',
+        ]);
+    }
+
+    public function test_archived_list_shows_only_agents_properties_and_all_properties_to_admin(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $otherAgent = User::factory()->agent()->create();
+        $admin = User::factory()->admin()->create();
+
+        $agentsArchivedProperty = Property::factory()->for($agent)->create([
+            'status' => 'archived',
+        ]);
+        $otherAgentsArchivedProperty = Property::factory()->for($otherAgent)->create([
+            'status' => 'archived',
+        ]);
+        $adminsArchivedProperty = Property::factory()->for($admin)->create([
+            'status' => 'archived',
+        ]);
+        Property::factory()->for($agent)->create([
+            'status' => 'available',
+        ]);
+
+        $agentResponse = $this->actingAs($agent)
+            ->get(route('panel.properties.archived'));
+
+        $agentResponse
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/properties/archived')
+                ->has('properties', 1)
+                ->where('properties.0.id', $agentsArchivedProperty->id)
+            );
+
+        $adminResponse = $this->actingAs($admin)
+            ->get(route('panel.properties.archived'));
+
+        $adminResponse
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/properties/archived')
+                ->has('properties', 3)
+            );
+
+        $actualPropertyIds = array_column($adminResponse->inertiaProps('properties'), 'id');
+        $expectedPropertyIds = [
+            $adminsArchivedProperty->id,
+            $otherAgentsArchivedProperty->id,
+            $agentsArchivedProperty->id,
+        ];
+
+        sort($actualPropertyIds, SORT_NUMERIC);
+        sort($expectedPropertyIds, SORT_NUMERIC);
+
+        $this->assertSame($expectedPropertyIds, $actualPropertyIds);
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function archivedListActorsWithoutProperties(): array
+    {
+        return [
+            'agent' => ['agent'],
+            'administrator' => ['admin'],
+        ];
+    }
+
+    #[DataProvider('archivedListActorsWithoutProperties')]
+    public function test_archived_list_is_empty_when_an_agent_or_admin_has_no_archived_properties(string $role): void
+    {
+        $user = $role === 'admin'
+            ? User::factory()->admin()->create()
+            : User::factory()->agent()->create();
+
+        $response = $this->actingAs($user)
+            ->get(route('panel.properties.archived'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/properties/archived')
+                ->has('properties', 0)
+            );
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function republishingActors(): array
+    {
+        return [
+            'owner agent' => ['agent'],
+            'administrator republishing another agent property' => ['admin'],
+        ];
+    }
+
+    #[DataProvider('republishingActors')]
+    public function test_agent_owner_or_admin_can_republish_and_restore_the_public_inquiry_flow(string $role): void
+    {
+        config(['properties.inquiry_recipient' => 'consultas@inmobiliaria.test']);
+
+        Mail::fake();
+
+        $owner = User::factory()->agent()->create();
+        $actor = $role === 'admin'
+            ? User::factory()->admin()->create()
+            : $owner;
+        $property = Property::factory()->for($owner)->create([
+            'title' => 'Casa republicada',
+            'zone' => 'Miraflores',
+            'status' => 'archived',
+        ]);
+        $remainingArchivedProperty = Property::factory()->for($owner)->create([
+            'title' => 'Casa que permanece archivada',
+            'zone' => 'Cayma',
+            'status' => 'archived',
+        ]);
+
+        $response = $this->actingAs($actor)
+            ->patch(route('panel.properties.republish', $property));
+
+        $response
+            ->assertRedirect(route('panel.properties.index'))
+            ->assertInertiaFlash('toast', [
+                'type' => 'success',
+                'message' => 'Propiedad republicada.',
+            ]);
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'status' => 'available',
+        ]);
+
+        $this->actingAs($actor)
+            ->get(route('panel.properties.archived'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('properties', 1)
+                ->where('properties.0.id', $remainingArchivedProperty->id)
+            );
+
+        $this->get(route('panel.properties.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('properties', 1)
+                ->where('properties.0.id', $property->id)
+                ->where('properties.0.status', 'available')
+            );
+
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->has('properties', 1)
+                ->where('properties.0.id', $property->id)
+                ->where('zones', ['Miraflores'])
+            );
+
+        $this->get(route('properties.show', $property))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('properties/show')
+                ->where('property.id', $property->id)
+            );
+
+        $this->post(route('properties.inquiries.store', $property), [
+            'name' => 'Ana Pérez',
+            'email' => 'ana@example.com',
+            'phone' => '+51 987 654 321',
+            'message' => 'Quisiera coordinar una visita.',
+        ])->assertRedirect(route('properties.show', $property));
+
+        $this->assertDatabaseHas('property_inquiries', [
+            'property_id' => $property->id,
+            'email' => 'ana@example.com',
+        ]);
+    }
+
+    public function test_agent_cannot_republish_another_agents_archived_property_and_preserves_it(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $owner = User::factory()->agent()->create();
+        $property = Property::factory()->for($owner)->create([
+            'status' => 'archived',
+        ]);
+
+        $response = $this->actingAs($agent)
+            ->patch(route('panel.properties.republish', $property));
+
+        $response->assertNotFound();
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'user_id' => $owner->id,
+            'status' => 'archived',
+        ]);
+    }
+
+    /**
+     * @return array<string, array{0: string}>
+     */
+    public static function nonArchivedPropertyStatuses(): array
+    {
+        return [
+            'available' => ['available'],
+            'sold' => ['sold'],
+            'rented' => ['rented'],
+        ];
+    }
+
+    #[DataProvider('nonArchivedPropertyStatuses')]
+    public function test_republishing_non_archived_property_returns_404_and_preserves_its_status(string $status): void
+    {
+        $agent = User::factory()->agent()->create();
+        $property = Property::factory()->for($agent)->create([
+            'status' => $status,
+        ]);
+
+        $response = $this->actingAs($agent)
+            ->patch(route('panel.properties.republish', $property));
+
+        $response->assertNotFound();
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'status' => $status,
+        ]);
+    }
+
+    public function test_guest_is_redirected_for_archived_list_and_republishing(): void
+    {
+        $property = Property::factory()->create([
+            'status' => 'archived',
+        ]);
+
+        $this->get(route('panel.properties.archived'))
+            ->assertRedirect(route('login'));
+
+        $this->patch(route('panel.properties.republish', $property))
+            ->assertRedirect(route('login'));
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'status' => 'archived',
         ]);
     }
 
