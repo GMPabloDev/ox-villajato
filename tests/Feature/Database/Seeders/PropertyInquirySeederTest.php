@@ -26,6 +26,8 @@ class PropertyInquirySeederTest extends TestCase
 
         $this->assertDatabaseHas('property_inquiries', [
             'property_id' => $sampleProperty->id,
+            'property_title' => $sampleProperty->title,
+            'publisher_id' => $sampleProperty->user_id,
             'email' => 'consulta-ejemplo@example.test',
         ]);
         $this->assertDatabaseMissing('property_inquiries', [
