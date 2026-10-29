@@ -16,20 +16,32 @@ class EnsurePropertyIsManageable
      *
      * @param  Closure(Request): (Response)  $next
      */
-    public function handle(Request $request, Closure $next): Response
+    public function handle(Request $request, Closure $next, ?string $statusRequirement = null): Response
     {
         $property = $request->route('property');
         $user = $request->user();
 
+        if (! $property instanceof Property || ! $user instanceof User) {
+            abort(404);
+        }
+
         if (
-            ! $property instanceof Property
-            || ! $user instanceof User
-            || $property->status === PropertyStatus::Archived
-            || $user->cannot('update', $property)
+            $user->cannot('update', $property)
+            || ! $this->isStatusAllowed($property, $statusRequirement)
         ) {
             abort(404);
         }
 
         return $next($request);
+    }
+
+    private function isStatusAllowed(Property $property, ?string $statusRequirement): bool
+    {
+        return match ($statusRequirement) {
+            'archived' => $property->status === PropertyStatus::Archived,
+            'closed' => in_array($property->status, [PropertyStatus::Sold, PropertyStatus::Rented], true),
+            null => $property->status !== PropertyStatus::Archived,
+            default => false,
+        };
     }
 }

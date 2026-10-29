@@ -8,6 +8,10 @@ import {
     reopen,
 } from '@/actions/App/Http/Controllers/PropertyController';
 import Heading from '@/components/heading';
+import {
+    PanelPropertyCard,
+    type PanelPropertyCardData,
+} from '@/components/panel-property-card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -22,11 +26,7 @@ import { Spinner } from '@/components/ui/spinner';
 
 type PendingAction = 'archive' | 'close' | 'reopen';
 
-type PanelProperty = {
-    id: number;
-    title: string;
-    price_formatted: string;
-    cover_photo_url: string | null;
+type PanelProperty = PanelPropertyCardData & {
     status: 'available' | 'archived' | 'sold' | 'rented';
     status_label: string;
     status_action: 'close' | 'reopen' | null;
@@ -123,90 +123,66 @@ export default function PanelPropertiesIndex({
                 ) : (
                     <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                         {properties.map((property) => (
-                            <li
+                            <PanelPropertyCard
                                 key={property.id}
-                                className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+                                property={property}
+                                statusBadge={
+                                    <Badge
+                                        variant={
+                                            property.status === 'available'
+                                                ? 'secondary'
+                                                : 'outline'
+                                        }
+                                    >
+                                        {property.status_label}
+                                    </Badge>
+                                }
                             >
-                                <div className="aspect-[4/3] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
-                                    {property.cover_photo_url ? (
-                                        <img
-                                            src={property.cover_photo_url}
-                                            alt={property.title}
-                                            className="size-full object-cover"
-                                            loading="lazy"
-                                        />
-                                    ) : (
-                                        <div className="flex size-full items-center justify-center text-neutral-400">
-                                            <Building2 className="size-10" />
-                                        </div>
-                                    )}
-                                </div>
-                                <div className="space-y-3 p-4">
-                                    <div className="flex flex-wrap items-start justify-between gap-2">
-                                        <h2 className="line-clamp-2 font-semibold">
-                                            {property.title}
-                                        </h2>
-                                        <Badge
-                                            variant={
-                                                property.status === 'available'
-                                                    ? 'secondary'
-                                                    : 'outline'
-                                            }
-                                        >
-                                            {property.status_label}
-                                        </Badge>
-                                    </div>
-                                    <p className="text-lg font-semibold">
-                                        {property.price_formatted}
-                                    </p>
-                                    <div className="grid gap-2">
-                                        {property.status_action !== null &&
-                                            property.status_action_label !==
-                                                null && (
-                                                <Button
-                                                    type="button"
-                                                    variant={
-                                                        property.status ===
-                                                        'available'
-                                                            ? 'default'
-                                                            : 'outline'
-                                                    }
-                                                    className="w-full"
-                                                    onClick={() =>
-                                                        requestStatusChange(
-                                                            property,
-                                                        )
-                                                    }
-                                                >
-                                                    {
-                                                        property.status_action_label
-                                                    }
-                                                </Button>
-                                            )}
-                                        {property.status === 'available' && (
+                                <div className="grid gap-2">
+                                    {property.status_action !== null &&
+                                        property.status_action_label !==
+                                            null && (
                                             <Button
                                                 type="button"
-                                                variant="outline"
+                                                variant={
+                                                    property.status ===
+                                                    'available'
+                                                        ? 'default'
+                                                        : 'outline'
+                                                }
                                                 className="w-full"
                                                 onClick={() =>
-                                                    requestArchive(property)
+                                                    requestStatusChange(
+                                                        property,
+                                                    )
                                                 }
                                             >
-                                                Archivar
+                                                {property.status_action_label}
                                             </Button>
                                         )}
+                                    {property.status === 'available' && (
                                         <Button
-                                            asChild
+                                            type="button"
                                             variant="outline"
                                             className="w-full"
+                                            onClick={() =>
+                                                requestArchive(property)
+                                            }
                                         >
-                                            <Link href={property.edit_url}>
-                                                Editar
-                                            </Link>
+                                            Archivar
                                         </Button>
-                                    </div>
+                                    )}
+                                    <Button
+                                        asChild
+                                        variant="outline"
+                                        className="w-full"
+                                    >
+                                        <Link href={property.edit_url}>
+                                            Editar
+                                        </Link>
+                                    </Button>
                                 </div>
-                            </li>
+                            </PanelPropertyCard>
                         ))}
                     </ul>
                 )}

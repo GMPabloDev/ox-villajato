@@ -37,8 +37,15 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
     Route::get('properties', [PropertyController::class, 'panelIndex'])
         ->name('properties.index');
 
+    Route::get('archived-properties', [PropertyController::class, 'archivedIndex'])
+        ->name('properties.archived');
+
     Route::get('inquiries', [PropertyInquiryController::class, 'index'])
         ->name('inquiries.index');
+
+    Route::patch('properties/{property}/republish', [PropertyController::class, 'republish'])
+        ->middleware(EnsurePropertyIsManageable::class.':archived')
+        ->name('properties.republish');
 
     Route::middleware(EnsurePropertyIsManageable::class)->group(function () {
         Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
@@ -53,10 +60,11 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
         Route::patch('properties/{property}/archive', [PropertyController::class, 'archive'])
             ->middleware(EnsurePropertyIsAvailable::class)
             ->name('properties.archive');
-
-        Route::patch('properties/{property}/reopen', [PropertyController::class, 'reopen'])
-            ->name('properties.reopen');
     });
+
+    Route::patch('properties/{property}/reopen', [PropertyController::class, 'reopen'])
+        ->middleware(EnsurePropertyIsManageable::class.':closed')
+        ->name('properties.reopen');
 });
 
 Route::middleware(['auth', 'verified'])->group(function () {

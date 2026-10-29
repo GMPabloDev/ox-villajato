@@ -128,6 +128,24 @@ class PropertyController extends Controller
         ]);
     }
 
+    public function archivedIndex(Request $request): Response
+    {
+        $user = $request->user();
+
+        $properties = Property::query()
+            ->where('status', PropertyStatus::Archived)
+            ->when(! $user->isAdmin(), fn (Builder $query): Builder => $query->whereBelongsTo($user))
+            ->with('photos')
+            ->latest('id')
+            ->get();
+
+        return Inertia::render('panel/properties/archived', [
+            'properties' => $properties
+                ->map(fn (Property $property): array => (new PropertyResource($property))->resolve())
+                ->all(),
+        ]);
+    }
+
     public function close(Property $property): RedirectResponse
     {
         $status = $property->operation->closedStatus();
@@ -149,6 +167,13 @@ class PropertyController extends Controller
         $property->update(['status' => PropertyStatus::Available]);
 
         return $this->redirectToPanelWithStatus(PropertyStatus::Available);
+    }
+
+    public function republish(Property $property): RedirectResponse
+    {
+        $property->update(['status' => PropertyStatus::Available]);
+
+        return $this->redirectToPanelWithStatus(PropertyStatus::Available, 'Propiedad republicada.');
     }
 
     private function redirectToPanelWithStatus(PropertyStatus $status, ?string $message = null): RedirectResponse

@@ -1,5 +1,6 @@
 import { Link, usePage } from '@inertiajs/react';
 import {
+    Archive,
     BookOpen,
     Building2,
     FolderGit2,
@@ -25,6 +26,7 @@ import { index as inquiriesIndex } from '@/actions/App/Http/Controllers/Property
 import { dashboard } from '@/routes';
 import { create as createAgent } from '@/actions/App/Http/Controllers/AgentController';
 import {
+    archivedIndex,
     create as createProperty,
     panelIndex,
 } from '@/actions/App/Http/Controllers/PropertyController';
@@ -56,6 +58,11 @@ export function AppSidebar() {
             title: 'Propiedades',
             href: panelIndex(),
             icon: Building2,
+        },
+        {
+            title: 'Archivadas',
+            href: archivedIndex(),
+            icon: Archive,
         },
         {
             title: 'Consultas',
