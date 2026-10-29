@@ -50,18 +50,18 @@ export function AppSidebar() {
             href: dashboard(),
             icon: LayoutGrid,
         },
+        {
+            title: 'Propiedades',
+            href: panelIndex(),
+            icon: Building2,
+        },
+        {
+            title: 'Publicar propiedad',
+            href: createProperty(),
+            icon: PlusCircle,
+        },
         ...(auth.user.role === 'admin'
             ? [
-                  {
-                      title: 'Propiedades',
-                      href: panelIndex(),
-                      icon: Building2,
-                  },
-                  {
-                      title: 'Publicar propiedad',
-                      href: createProperty(),
-                      icon: PlusCircle,
-                  },
                   {
                       title: 'Crear agente',
                       href: createAgent(),

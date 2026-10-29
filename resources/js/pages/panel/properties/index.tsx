@@ -73,7 +73,7 @@ export default function PanelPropertiesIndex({
                 <div className="flex flex-wrap items-end justify-between gap-4">
                     <Heading
                         title="Propiedades"
-                        description="Todas las propiedades publicadas con su portada, título y precio."
+                        description="Propiedades que gestionas, con su portada, título y precio."
                     />
                     <Button asChild>
                         <Link href={create_url}>
@@ -87,7 +87,7 @@ export default function PanelPropertiesIndex({
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
                         <Building2 className="mb-3 size-10 text-neutral-400" />
                         <p className="font-medium">
-                            Aún no hay propiedades publicadas.
+                            Aún no hay propiedades para gestionar.
                         </p>
                         <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
                             Publica la primera para que aparezca en el catálogo.

@@ -102,9 +102,12 @@ class PropertyController extends Controller
         return Inertia::render('properties/create');
     }
 
-    public function panelIndex(): Response
+    public function panelIndex(Request $request): Response
     {
+        $user = $request->user();
+
         $properties = Property::query()
+            ->when(! $user->isAdmin(), fn (Builder $query): Builder => $query->whereBelongsTo($user))
             ->with('photos')
             ->latest('id')
             ->get();
@@ -191,7 +194,9 @@ class PropertyController extends Controller
 
         unset($validated['photos']);
 
-        $property = Property::create($validated);
+        $user = $request->user();
+
+        $property = $user->properties()->create($validated);
 
         $directory = (string) config('properties.photos_directory');
         $disk = (string) config('properties.photos_disk');

@@ -41,7 +41,6 @@ class AppServiceProvider extends ServiceProvider
     protected function configureAuthorization(): void
     {
         Gate::define('manage-agents', fn (User $user): bool => $user->isAdmin());
-        Gate::define('manage-properties', fn (User $user): bool => $user->isAdmin());
     }
 
     /**

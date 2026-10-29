@@ -6,6 +6,7 @@ use App\Enums\Currency;
 use App\Enums\PropertyOperation;
 use App\Enums\PropertyType;
 use App\Models\Property;
+use App\Models\User;
 use Illuminate\Database\Eloquent\Factories\Factory;
 
 /**
@@ -21,6 +22,7 @@ class PropertyFactory extends Factory
     public function definition(): array
     {
         return [
+            'user_id' => User::factory()->agent(),
             'operation' => fake()->randomElement(PropertyOperation::cases()),
             'type' => fake()->randomElement(PropertyType::cases()),
             'title' => fake()->sentence(4),
