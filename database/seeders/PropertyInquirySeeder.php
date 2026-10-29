@@ -24,6 +24,8 @@ class PropertyInquirySeeder extends Seeder
                 $property->inquiries()->updateOrCreate(
                     ['email' => 'consulta-ejemplo@example.test'],
                     [
+                        'property_title' => $property->title,
+                        'publisher_id' => $property->user_id,
                         'name' => 'Visitante de ejemplo',
                         'phone' => '+51 987 654 321',
                         'message' => 'Quisiera coordinar una visita.',

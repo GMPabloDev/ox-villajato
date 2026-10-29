@@ -22,22 +22,18 @@ class PropertyInquiryController extends Controller
         $canSeeAllInquiries = $user->isAdmin();
 
         $inquiries = PropertyInquiryModel::query()
-            ->select(['id', 'property_id', 'name', 'email', 'phone', 'message', 'created_at'])
+            ->select(['id', 'property_id', 'property_title', 'name', 'email', 'phone', 'message', 'created_at'])
             ->when(
                 ! $canSeeAllInquiries,
-                fn (Builder $query): Builder => $query->whereHas(
-                    'property',
-                    fn (Builder $propertyQuery): Builder => $propertyQuery->whereBelongsTo($user),
-                ),
+                fn (Builder $query): Builder => $query->where('publisher_id', $user->id),
             )
-            ->with('property:id,title')
             ->latest()
             ->latest('id')
             ->paginate(15)
             ->through(fn (PropertyInquiryModel $inquiry): array => [
                 'id' => $inquiry->id,
                 'property' => [
-                    'title' => $inquiry->property->title,
+                    'title' => $inquiry->property_title,
                 ],
                 'name' => $inquiry->name,
                 'email' => $inquiry->email,
@@ -57,6 +53,8 @@ class PropertyInquiryController extends Controller
         $validated = $request->validated();
 
         $inquiry = $property->inquiries()->create([
+            'property_title' => $property->title,
+            'publisher_id' => $property->user_id,
             'name' => $validated['name'],
             'email' => $validated['email'],
             'phone' => $validated['phone'] ?? null,

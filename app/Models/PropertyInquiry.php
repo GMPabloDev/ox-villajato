@@ -12,15 +12,17 @@ use Illuminate\Support\Carbon;
 /**
  * @property int $id
  * @property int $property_id
+ * @property string $property_title
+ * @property int $publisher_id
  * @property string $name
  * @property string $email
  * @property string|null $phone
  * @property string $message
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
- * @property-read Property $property
+ * @property-read Property|null $property
  */
-#[Fillable(['name', 'email', 'phone', 'message'])]
+#[Fillable(['property_title', 'publisher_id', 'name', 'email', 'phone', 'message'])]
 class PropertyInquiry extends Model
 {
     /** @use HasFactory<PropertyInquiryFactory> */

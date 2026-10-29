@@ -32,6 +32,10 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
 
         Route::post('agents', [AgentController::class, 'store'])
             ->name('agents.store');
+
+        Route::delete('properties/{property}', [PropertyController::class, 'destroy'])
+            ->middleware(EnsurePropertyIsManageable::class.':archived')
+            ->name('properties.destroy');
     });
 
     Route::get('properties', [PropertyController::class, 'panelIndex'])

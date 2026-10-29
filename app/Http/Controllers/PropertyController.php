@@ -10,17 +10,21 @@ use App\Http\Requests\UpdatePropertyRequest;
 use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
+use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Facades\Validator;
 use Illuminate\Support\Str;
 use Illuminate\Validation\Rule;
 use Inertia\Inertia;
 use Inertia\Response;
+use RuntimeException;
 use Throwable;
 
 class PropertyController extends Controller
@@ -143,7 +147,220 @@ class PropertyController extends Controller
             'properties' => $properties
                 ->map(fn (Property $property): array => (new PropertyResource($property))->resolve())
                 ->all(),
+            'canDelete' => $user->isAdmin(),
         ]);
+    }
+
+    public function destroy(Request $request, Property $property): RedirectResponse
+    {
+        $request->validate(
+            [
+                'title_confirmation' => ['required', 'string', Rule::in([$property->title])],
+            ],
+            [
+                'title_confirmation.required' => 'Escribe el título de la propiedad para confirmar.',
+                'title_confirmation.in' => 'El título no coincide con la propiedad.',
+            ],
+        );
+
+        $disk = (string) config('properties.photos_disk');
+        $photoPaths = array_values(array_unique($property->photos()->pluck('path')->all()));
+        $backupDirectory = 'property-deletion-backups/'.Str::uuid();
+        $backups = [];
+
+        try {
+            $photoDisk = Storage::disk($disk);
+            $backupDisk = Storage::disk('local');
+
+            $this->backupPropertyPhotos($photoDisk, $backupDisk, $photoPaths, $backupDirectory, $backups);
+        } catch (Throwable $exception) {
+            if (isset($backupDisk)) {
+                $this->discardPhotoBackups($backupDisk, $backupDirectory, $backups, $property->id);
+            }
+
+            Log::error('Unable to prepare archived property photos for deletion.', [
+                'property_id' => $property->id,
+                'exception' => $exception,
+            ]);
+
+            return $this->redirectWithPropertyDeletionError(
+                'No se pudieron preparar las fotos para su eliminación. Inténtalo de nuevo.',
+            );
+        }
+
+        $failureMessage = 'No se pudieron eliminar las fotos de la propiedad. Inténtalo de nuevo.';
+
+        try {
+            foreach ($photoPaths as $photoPath) {
+                if (! $photoDisk->delete($photoPath)) {
+                    throw new RuntimeException('Unable to delete property photo ['.$photoPath.'].');
+                }
+            }
+
+            $failureMessage = 'No se pudo eliminar la propiedad. Inténtalo de nuevo.';
+
+            DB::transaction(function () use ($property): void {
+                if (! $property->delete()) {
+                    throw new RuntimeException('Unable to delete property ['.$property->id.'].');
+                }
+            });
+        } catch (Throwable $exception) {
+            $restoreFailures = $this->restorePropertyPhotos($photoDisk, $backupDisk, $backups);
+
+            if ($restoreFailures === []) {
+                $this->discardPhotoBackups($backupDisk, $backupDirectory, $backups, $property->id);
+            } else {
+                Log::critical('Archived property photo restoration was incomplete.', [
+                    'property_id' => $property->id,
+                    'photo_paths' => $restoreFailures,
+                    'backup_directory' => $backupDirectory,
+                    'exception' => $exception,
+                ]);
+            }
+
+            Log::error('Unable to delete archived property and its photos.', [
+                'property_id' => $property->id,
+                'exception' => $exception,
+                'restore_failed_paths' => $restoreFailures,
+            ]);
+
+            return $this->redirectWithPropertyDeletionError(
+                $restoreFailures === []
+                    ? $failureMessage
+                    : 'No se pudieron eliminar ni restaurar todas las fotos. Contacta con soporte.',
+            );
+        }
+
+        $this->discardPhotoBackups($backupDisk, $backupDirectory, $backups, $property->id);
+
+        Inertia::flash('toast', [
+            'type' => 'success',
+            'message' => 'Propiedad eliminada.',
+        ]);
+
+        return to_route('panel.properties.archived');
+    }
+
+    /**
+     * @param  list<string>  $photoPaths
+     * @param  array<string, array{path: string, visibility: string}>  $backups
+     */
+    private function backupPropertyPhotos(
+        FilesystemAdapter $photoDisk,
+        Filesystem $backupDisk,
+        array $photoPaths,
+        string $backupDirectory,
+        array &$backups,
+    ): void {
+        foreach ($photoPaths as $index => $photoPath) {
+            if (! $photoDisk->fileExists($photoPath)) {
+                continue;
+            }
+
+            $backupPath = $backupDirectory.'/'.$index;
+            $backups[$photoPath] = [
+                'path' => $backupPath,
+                'visibility' => Filesystem::VISIBILITY_PUBLIC,
+            ];
+
+            $photoStream = $photoDisk->readStream($photoPath);
+
+            if (! is_resource($photoStream)) {
+                throw new RuntimeException('Unable to read property photo ['.$photoPath.'] for backup.');
+            }
+
+            try {
+                if (! $backupDisk->writeStream($backupPath, $photoStream)) {
+                    throw new RuntimeException('Unable to back up property photo ['.$photoPath.'].');
+                }
+            } finally {
+                fclose($photoStream);
+            }
+        }
+    }
+
+    /**
+     * @param  array<string, array{path: string, visibility: string}>  $backups
+     * @return list<string>
+     */
+    private function restorePropertyPhotos(FilesystemAdapter $photoDisk, Filesystem $backupDisk, array $backups): array
+    {
+        $failedPaths = [];
+
+        foreach ($backups as $photoPath => $backup) {
+            try {
+                if ($photoDisk->fileExists($photoPath)) {
+                    continue;
+                }
+
+                $backupStream = $backupDisk->readStream($backup['path']);
+
+                if (! is_resource($backupStream)) {
+                    $failedPaths[] = $photoPath;
+
+                    continue;
+                }
+
+                try {
+                    if (! $photoDisk->writeStream($photoPath, $backupStream, [
+                        'visibility' => $backup['visibility'],
+                    ])) {
+                        $failedPaths[] = $photoPath;
+                    }
+                } finally {
+                    fclose($backupStream);
+                }
+            } catch (Throwable $exception) {
+                $failedPaths[] = $photoPath;
+
+                Log::critical('Unable to restore property photo after failed deletion.', [
+                    'photo_path' => $photoPath,
+                    'backup_path' => $backup['path'],
+                    'exception' => $exception,
+                ]);
+            }
+        }
+
+        return $failedPaths;
+    }
+
+    /**
+     * @param  array<string, array{path: string, visibility: string}>  $backups
+     */
+    private function discardPhotoBackups(
+        Filesystem $backupDisk,
+        string $backupDirectory,
+        array $backups,
+        int $propertyId,
+    ): void {
+        if ($backups === []) {
+            return;
+        }
+
+        try {
+            if (! $backupDisk->deleteDirectory($backupDirectory)) {
+                Log::warning('Unable to remove temporary property photo backups.', [
+                    'property_id' => $propertyId,
+                    'backup_directory' => $backupDirectory,
+                ]);
+            }
+        } catch (Throwable $exception) {
+            Log::warning('Unable to remove temporary property photo backups.', [
+                'property_id' => $propertyId,
+                'backup_directory' => $backupDirectory,
+                'exception' => $exception,
+            ]);
+        }
+    }
+
+    private function redirectWithPropertyDeletionError(string $message): RedirectResponse
+    {
+        Inertia::flash('toast', [
+            'type' => 'error',
+            'message' => $message,
+        ]);
+
+        return to_route('panel.properties.archived');
     }
 
     public function close(Property $property): RedirectResponse

@@ -11,6 +11,16 @@ use Illuminate\Database\Eloquent\Factories\Factory;
  */
 class PropertyInquiryFactory extends Factory
 {
+    public function configure(): static
+    {
+        return $this->afterMaking(function (PropertyInquiry $inquiry): void {
+            $property = $inquiry->property()->firstOrFail();
+
+            $inquiry->property_title ??= $property->title;
+            $inquiry->publisher_id ??= $property->user_id;
+        });
+    }
+
     /**
      * Define the model's default state.
      *

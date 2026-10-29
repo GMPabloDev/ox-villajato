@@ -3,14 +3,18 @@ import { Building2 } from 'lucide-react';
 import { useState } from 'react';
 import {
     archivedIndex,
+    destroy as deleteArchivedProperty,
     republish,
 } from '@/actions/App/Http/Controllers/PropertyController';
 import Heading from '@/components/heading';
+import InputError from '@/components/input-error';
 import {
     PanelPropertyCard,
     type PanelPropertyCardData,
 } from '@/components/panel-property-card';
 import { Button } from '@/components/ui/button';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
 import {
     Dialog,
     DialogContent,
@@ -28,12 +32,25 @@ type ArchivedProperty = PanelPropertyCardData & {
 
 export default function ArchivedProperties({
     properties,
+    canDelete,
 }: {
     properties: ArchivedProperty[];
+    canDelete: boolean;
 }) {
     const [pendingProperty, setPendingProperty] =
         useState<ArchivedProperty | null>(null);
+    const [pendingDeletion, setPendingDeletion] =
+        useState<ArchivedProperty | null>(null);
     const { submit, processing } = useForm({});
+    const {
+        clearErrors: clearDeletionErrors,
+        data: deletionData,
+        errors: deletionErrors,
+        processing: deletionProcessing,
+        reset: resetDeletionForm,
+        setData: setDeletionData,
+        submit: submitDeletion,
+    } = useForm({ title_confirmation: '' });
 
     function confirmRepublish() {
         if (pendingProperty === null) {
@@ -45,6 +62,31 @@ export default function ArchivedProperties({
         submit(action.method, action.url, {
             preserveScroll: true,
             onSuccess: () => setPendingProperty(null),
+        });
+    }
+
+    function requestDeletion(property: ArchivedProperty) {
+        clearDeletionErrors();
+        resetDeletionForm();
+        setPendingDeletion(property);
+    }
+
+    function closeDeletionDialog() {
+        setPendingDeletion(null);
+        resetDeletionForm();
+        clearDeletionErrors();
+    }
+
+    function confirmDeletion() {
+        if (pendingDeletion === null) {
+            return;
+        }
+
+        const action = deleteArchivedProperty(pendingDeletion.id);
+
+        submitDeletion(action.method, action.url, {
+            preserveScroll: true,
+            onSuccess: closeDeletionDialog,
         });
     }
 
@@ -80,13 +122,29 @@ export default function ArchivedProperties({
                                     </p>
                                 }
                             >
-                                <Button
-                                    type="button"
-                                    className="w-full"
-                                    onClick={() => setPendingProperty(property)}
-                                >
-                                    Republicar
-                                </Button>
+                                <div className="grid gap-2">
+                                    <Button
+                                        type="button"
+                                        className="w-full"
+                                        onClick={() =>
+                                            setPendingProperty(property)
+                                        }
+                                    >
+                                        Republicar
+                                    </Button>
+                                    {canDelete && (
+                                        <Button
+                                            type="button"
+                                            variant="destructive"
+                                            className="w-full"
+                                            onClick={() =>
+                                                requestDeletion(property)
+                                            }
+                                        >
+                                            Eliminar
+                                        </Button>
+                                    )}
+                                </div>
                             </PanelPropertyCard>
                         ))}
                     </ul>
@@ -128,6 +186,86 @@ export default function ArchivedProperties({
                             Confirmar
                         </Button>
                     </DialogFooter>
+                </DialogContent>
+            </Dialog>
+
+            <Dialog
+                open={pendingDeletion !== null}
+                onOpenChange={(open) => {
+                    if (!open && !deletionProcessing) {
+                        closeDeletionDialog();
+                    }
+                }}
+            >
+                <DialogContent>
+                    <DialogHeader>
+                        <DialogTitle>Eliminar propiedad</DialogTitle>
+                        <DialogDescription>
+                            {pendingDeletion
+                                ? `Escribe exactamente «${pendingDeletion.title}» para confirmar. La propiedad y sus fotos se eliminarán; las consultas recibidas se conservarán.`
+                                : null}
+                        </DialogDescription>
+                    </DialogHeader>
+                    <form
+                        className="grid gap-4"
+                        onSubmit={(event) => {
+                            event.preventDefault();
+                            confirmDeletion();
+                        }}
+                    >
+                        <div className="grid gap-2">
+                            <Label htmlFor="title_confirmation">
+                                Título de la propiedad
+                            </Label>
+                            <Input
+                                id="title_confirmation"
+                                name="title_confirmation"
+                                autoComplete="off"
+                                value={deletionData.title_confirmation}
+                                onChange={(event) =>
+                                    setDeletionData(
+                                        'title_confirmation',
+                                        event.target.value,
+                                    )
+                                }
+                                aria-invalid={Boolean(
+                                    deletionErrors.title_confirmation,
+                                )}
+                                aria-describedby={
+                                    deletionErrors.title_confirmation
+                                        ? 'title_confirmation-error'
+                                        : undefined
+                                }
+                            />
+                            {deletionErrors.title_confirmation && (
+                                <InputError
+                                    id="title_confirmation-error"
+                                    message={deletionErrors.title_confirmation}
+                                />
+                            )}
+                        </div>
+                        <DialogFooter>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                disabled={deletionProcessing}
+                                onClick={closeDeletionDialog}
+                            >
+                                Cancelar
+                            </Button>
+                            <Button
+                                type="submit"
+                                variant="destructive"
+                                disabled={
+                                    deletionProcessing ||
+                                    pendingDeletion === null
+                                }
+                            >
+                                {deletionProcessing && <Spinner />}
+                                Eliminar definitivamente
+                            </Button>
+                        </DialogFooter>
+                    </form>
                 </DialogContent>
             </Dialog>
         </>
