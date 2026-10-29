@@ -19,12 +19,20 @@ class PropertyInquiryController extends Controller
     public function index(Request $request): Response
     {
         $user = $request->user();
+        $canSeeAllInquiries = $user->isAdmin();
 
         $inquiries = PropertyInquiryModel::query()
             ->select(['id', 'property_id', 'name', 'email', 'phone', 'message', 'created_at'])
-            ->whereHas('property', fn (Builder $query): Builder => $query->whereBelongsTo($user))
+            ->when(
+                ! $canSeeAllInquiries,
+                fn (Builder $query): Builder => $query->whereHas(
+                    'property',
+                    fn (Builder $propertyQuery): Builder => $propertyQuery->whereBelongsTo($user),
+                ),
+            )
             ->with('property:id,title')
             ->latest()
+            ->latest('id')
             ->paginate(15)
             ->through(fn (PropertyInquiryModel $inquiry): array => [
                 'id' => $inquiry->id,
@@ -40,6 +48,7 @@ class PropertyInquiryController extends Controller
 
         return Inertia::render('panel/inquiries/index', [
             'inquiries' => $inquiries,
+            'canSeeAllInquiries' => $canSeeAllInquiries,
         ]);
     }
 

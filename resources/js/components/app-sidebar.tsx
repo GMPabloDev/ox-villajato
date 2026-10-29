@@ -57,15 +57,11 @@ export function AppSidebar() {
             href: panelIndex(),
             icon: Building2,
         },
-        ...(auth.user.role === 'agent'
-            ? [
-                  {
-                      title: 'Consultas',
-                      href: inquiriesIndex(),
-                      icon: MessageSquare,
-                  },
-              ]
-            : []),
+        {
+            title: 'Consultas',
+            href: inquiriesIndex(),
+            icon: MessageSquare,
+        },
         {
             title: 'Publicar propiedad',
             href: createProperty(),

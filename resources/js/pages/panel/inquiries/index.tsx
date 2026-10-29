@@ -29,9 +29,25 @@ type PaginatedInquiries = {
 
 export default function PanelInquiriesIndex({
     inquiries,
+    canSeeAllInquiries,
 }: {
     inquiries: PaginatedInquiries;
+    canSeeAllInquiries: boolean;
 }) {
+    const pageText = canSeeAllInquiries
+        ? {
+              description: 'Consultas recibidas de todas las propiedades.',
+              emptyTitle: 'Aún no hay consultas.',
+              emptyDescription:
+                  'Las consultas recibidas en las propiedades aparecerán aquí.',
+          }
+        : {
+              description: 'Consultas recibidas por tus propiedades.',
+              emptyTitle: 'Aún no tienes consultas.',
+              emptyDescription:
+                  'Las consultas por tus propiedades aparecerán aquí.',
+          };
+
     return (
         <>
             <Head title="Consultas" />
@@ -40,15 +56,15 @@ export default function PanelInquiriesIndex({
                 <Heading
                     level="h1"
                     title="Consultas"
-                    description="Consultas recibidas por tus propiedades."
+                    description={pageText.description}
                 />
 
                 {inquiries.data.length === 0 ? (
                     <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
                         <MessageSquare className="size-10 text-neutral-400" />
-                        <p className="font-medium">Aún no tienes consultas.</p>
+                        <p className="font-medium">{pageText.emptyTitle}</p>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
-                            Las consultas por tus propiedades aparecerán aquí.
+                            {pageText.emptyDescription}
                         </p>
                     </div>
                 ) : (
