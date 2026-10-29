@@ -105,6 +105,7 @@ class PropertyInquiryTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/inquiries/index')
                 ->has('inquiries.data', 1)
+                ->where('canSeeAllInquiries', false)
                 ->where('inquiries.data.0.property.title', 'Casa frente al parque')
                 ->where('inquiries.data.0.name', 'Ana Pérez')
                 ->where('inquiries.data.0.email', 'ana@example.com')
@@ -117,6 +118,89 @@ class PropertyInquiryTest extends TestCase
             );
     }
 
+    public function test_admin_sees_inquiries_for_all_properties_with_visitor_details(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $firstAgent = User::factory()->agent()->create();
+        $secondAgent = User::factory()->agent()->create();
+
+        $adminProperty = Property::factory()->for($admin)->create([
+            'title' => 'Propiedad del administrador',
+        ]);
+        $firstAgentProperty = Property::factory()->for($firstAgent)->create([
+            'title' => 'Propiedad de la primera agente',
+        ]);
+        $secondAgentProperty = Property::factory()->for($secondAgent)->create([
+            'title' => 'Propiedad de la segunda agente',
+        ]);
+
+        $adminReceivedAt = new DateTimeImmutable('2026-10-28T14:30:00+00:00');
+        $firstAgentReceivedAt = new DateTimeImmutable('2026-10-28T14:31:00+00:00');
+        $secondAgentReceivedAt = new DateTimeImmutable('2026-10-28T14:32:00+00:00');
+
+        $adminInquiry = PropertyInquiryModel::factory()->for($adminProperty)->create([
+            'name' => 'Ana Pérez',
+            'email' => 'ana@example.com',
+            'phone' => '+51 987 654 321',
+            'message' => 'Consulta por la propiedad del administrador.',
+            'created_at' => $adminReceivedAt->format('Y-m-d H:i:s'),
+        ]);
+        $firstAgentInquiry = PropertyInquiryModel::factory()->for($firstAgentProperty)->create([
+            'name' => 'Luis Rojas',
+            'email' => 'luis@example.com',
+            'phone' => null,
+            'message' => 'Consulta por la propiedad de la primera agente.',
+            'created_at' => $firstAgentReceivedAt->format('Y-m-d H:i:s'),
+        ]);
+        $secondAgentInquiry = PropertyInquiryModel::factory()->for($secondAgentProperty)->create([
+            'name' => 'Carla Torres',
+            'email' => 'carla@example.com',
+            'phone' => '+51 999 123 456',
+            'message' => 'Consulta por la propiedad de la segunda agente.',
+            'created_at' => $secondAgentReceivedAt->format('Y-m-d H:i:s'),
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 3)
+                ->where('canSeeAllInquiries', true)
+                ->where('inquiries.data.0.id', $secondAgentInquiry->id)
+                ->where('inquiries.data.0.property.title', $secondAgentProperty->title)
+                ->where('inquiries.data.0.name', $secondAgentInquiry->name)
+                ->where('inquiries.data.0.email', $secondAgentInquiry->email)
+                ->where('inquiries.data.0.phone', $secondAgentInquiry->phone)
+                ->where('inquiries.data.0.message', $secondAgentInquiry->message)
+                ->where(
+                    'inquiries.data.0.received_at',
+                    fn (string $receivedAt): bool => (new DateTimeImmutable($receivedAt))->getTimestamp() === $secondAgentReceivedAt->getTimestamp(),
+                )
+                ->where('inquiries.data.1.id', $firstAgentInquiry->id)
+                ->where('inquiries.data.1.property.title', $firstAgentProperty->title)
+                ->where('inquiries.data.1.name', $firstAgentInquiry->name)
+                ->where('inquiries.data.1.email', $firstAgentInquiry->email)
+                ->where('inquiries.data.1.phone', $firstAgentInquiry->phone)
+                ->where('inquiries.data.1.message', $firstAgentInquiry->message)
+                ->where(
+                    'inquiries.data.1.received_at',
+                    fn (string $receivedAt): bool => (new DateTimeImmutable($receivedAt))->getTimestamp() === $firstAgentReceivedAt->getTimestamp(),
+                )
+                ->where('inquiries.data.2.id', $adminInquiry->id)
+                ->where('inquiries.data.2.property.title', $adminProperty->title)
+                ->where('inquiries.data.2.name', $adminInquiry->name)
+                ->where('inquiries.data.2.email', $adminInquiry->email)
+                ->where('inquiries.data.2.phone', $adminInquiry->phone)
+                ->where('inquiries.data.2.message', $adminInquiry->message)
+                ->where(
+                    'inquiries.data.2.received_at',
+                    fn (string $receivedAt): bool => (new DateTimeImmutable($receivedAt))->getTimestamp() === $adminReceivedAt->getTimestamp(),
+                )
+            );
+    }
+
     public function test_agent_receives_an_empty_inquiry_list_when_no_inquiries_exist(): void
     {
         $agent = User::factory()->agent()->create();
@@ -124,6 +208,20 @@ class PropertyInquiryTest extends TestCase
         Property::factory()->for($agent)->create();
 
         $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 0)
+            );
+    }
+
+    public function test_admin_receives_an_empty_inquiry_list_when_no_inquiries_exist(): void
+    {
+        $admin = User::factory()->admin()->create();
+
+        $response = $this->actingAs($admin)->get(route('panel.inquiries.index'));
 
         $response
             ->assertOk()
@@ -150,6 +248,59 @@ class PropertyInquiryTest extends TestCase
                 ->has('inquiries.data', 1)
                 ->where('inquiries.data.0.phone', null)
             );
+    }
+
+    public function test_admin_can_paginate_inquiries_across_all_properties(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $agent = User::factory()->agent()->create();
+        $adminProperty = Property::factory()->for($admin)->create();
+        $agentProperty = Property::factory()->for($agent)->create();
+        $createdAt = '2026-10-28 14:30:00';
+        $adminInquiries = PropertyInquiryModel::factory()
+            ->count(8)
+            ->for($adminProperty)
+            ->create(['created_at' => $createdAt]);
+        $agentInquiries = PropertyInquiryModel::factory()
+            ->count(8)
+            ->for($agentProperty)
+            ->create(['created_at' => $createdAt]);
+        $expectedIds = $adminInquiries->pluck('id')
+            ->concat($agentInquiries->pluck('id'))
+            ->sort()
+            ->reverse()
+            ->values()
+            ->all();
+
+        $firstPage = $this->actingAs($admin)->get(route('panel.inquiries.index'));
+
+        $firstPage
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 15)
+                ->where('inquiries.total', 16)
+                ->where('inquiries.current_page', 1)
+            );
+        $firstPageIds = collect($firstPage->inertiaProps('inquiries.data'))->pluck('id')->all();
+
+        $secondPage = $this->actingAs($admin)->get(route('panel.inquiries.index', ['page' => 2]));
+
+        $secondPage
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 1)
+                ->where('inquiries.total', 16)
+                ->where('inquiries.current_page', 2)
+            );
+        $secondPageIds = collect($secondPage->inertiaProps('inquiries.data'))->pluck('id')->all();
+        $actualIds = collect($firstPageIds)
+            ->concat($secondPageIds)
+            ->values()
+            ->all();
+
+        $this->assertSame($expectedIds, $actualIds);
     }
 
     public function test_agent_can_paginate_their_inquiry_list(): void
@@ -248,6 +399,54 @@ class PropertyInquiryTest extends TestCase
         ]);
 
         $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->where('inquiries.data', function (Collection $inquiries) use ($saleInquiry, $rentInquiry): bool {
+                    $actualIds = $inquiries->pluck('id')->sort()->values()->all();
+                    $expectedIds = collect([$saleInquiry->id, $rentInquiry->id])->sort()->values()->all();
+
+                    return $actualIds === $expectedIds;
+                })
+            );
+    }
+
+    public function test_admin_keeps_inquiries_after_properties_are_sold_or_rented(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $saleAgent = User::factory()->agent()->create();
+        $rentAgent = User::factory()->agent()->create();
+        $saleProperty = Property::factory()->for($saleAgent)->create([
+            'operation' => 'sale',
+            'status' => 'available',
+        ]);
+        $rentProperty = Property::factory()->for($rentAgent)->create([
+            'operation' => 'rent',
+            'status' => 'available',
+        ]);
+        $saleInquiry = PropertyInquiryModel::factory()->for($saleProperty)->create();
+        $rentInquiry = PropertyInquiryModel::factory()->for($rentProperty)->create();
+
+        $this->actingAs($saleAgent)
+            ->patch(route('panel.properties.close', $saleProperty))
+            ->assertRedirect(route('panel.properties.index'));
+
+        $this->actingAs($rentAgent)
+            ->patch(route('panel.properties.close', $rentProperty))
+            ->assertRedirect(route('panel.properties.index'));
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $saleProperty->id,
+            'status' => 'sold',
+        ]);
+        $this->assertDatabaseHas('properties', [
+            'id' => $rentProperty->id,
+            'status' => 'rented',
+        ]);
+
+        $response = $this->actingAs($admin)->get(route('panel.inquiries.index'));
 
         $response
             ->assertOk()
