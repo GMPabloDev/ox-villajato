@@ -4,10 +4,17 @@ namespace Tests\Feature\Properties;
 
 use App\Mail\PropertyInquiry;
 use App\Models\Property;
+use App\Models\PropertyInquiry as PropertyInquiryModel;
+use App\Models\User;
+use DateTimeImmutable;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Exceptions;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Testing\TestResponse;
+use Inertia\Testing\AssertableInertia as Assert;
 use PHPUnit\Framework\Attributes\DataProvider;
+use RuntimeException;
 use Tests\TestCase;
 
 class PropertyInquiryTest extends TestCase
@@ -33,10 +40,232 @@ class PropertyInquiryTest extends TestCase
                 'message' => 'Tu consulta fue enviada. Nos pondremos en contacto contigo pronto.',
             ]);
 
+        $this->assertDatabaseHas('property_inquiries', [
+            'property_id' => $property->id,
+            'name' => 'Ana Pérez',
+            'email' => 'ana@example.com',
+            'phone' => '+51 987 654 321',
+            'message' => 'Quisiera coordinar una visita.',
+        ]);
+
         Mail::assertSent(PropertyInquiry::class, function (PropertyInquiry $mail): bool {
             return $mail->hasTo('consultas@inmobiliaria.test')
                 && $mail->hasReplyTo('ana@example.com', 'Ana Pérez');
         });
+    }
+
+    public function test_mail_failure_keeps_saved_inquiry_and_confirms_submission(): void
+    {
+        $property = Property::factory()->create();
+
+        Exceptions::fake();
+
+        Mail::expects('send')
+            ->andThrow(new RuntimeException('Mail delivery failed.'));
+
+        $response = $this->post(route('properties.inquiries.store', $property), $this->validPayload());
+
+        $this->assertDatabaseHas('property_inquiries', [
+            'property_id' => $property->id,
+            'name' => 'Ana Pérez',
+            'email' => 'ana@example.com',
+            'phone' => '+51 987 654 321',
+            'message' => 'Quisiera coordinar una visita.',
+        ]);
+
+        $response
+            ->assertRedirect(route('properties.show', $property))
+            ->assertInertiaFlash('toast', [
+                'type' => 'success',
+                'message' => 'Tu consulta fue enviada. Nos pondremos en contacto contigo pronto.',
+            ]);
+
+        Exceptions::assertReported(RuntimeException::class);
+    }
+
+    public function test_agent_sees_their_inquiry_property_and_visitor_details(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $property = Property::factory()->for($agent)->create([
+            'title' => 'Casa frente al parque',
+        ]);
+        $expectedReceivedAt = new DateTimeImmutable('2026-10-28T14:30:00+00:00');
+        $inquiry = PropertyInquiryModel::factory()->for($property)->create([
+            'name' => 'Ana Pérez',
+            'email' => 'ana@example.com',
+            'phone' => '+51 987 654 321',
+            'message' => 'Quisiera coordinar una visita.',
+            'created_at' => '2026-10-28 14:30:00',
+        ]);
+
+        $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 1)
+                ->where('inquiries.data.0.property.title', 'Casa frente al parque')
+                ->where('inquiries.data.0.name', 'Ana Pérez')
+                ->where('inquiries.data.0.email', 'ana@example.com')
+                ->where('inquiries.data.0.phone', '+51 987 654 321')
+                ->where('inquiries.data.0.message', 'Quisiera coordinar una visita.')
+                ->where(
+                    'inquiries.data.0.received_at',
+                    fn (string $receivedAt): bool => (new DateTimeImmutable($receivedAt))->getTimestamp() === $expectedReceivedAt->getTimestamp(),
+                )
+            );
+    }
+
+    public function test_agent_receives_an_empty_inquiry_list_when_no_inquiries_exist(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        Property::factory()->for($agent)->create();
+
+        $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 0)
+            );
+    }
+
+    public function test_agent_sees_an_inquiry_without_a_phone_number_when_none_was_provided(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $property = Property::factory()->for($agent)->create();
+        PropertyInquiryModel::factory()->for($property)->create([
+            'phone' => null,
+        ]);
+
+        $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 1)
+                ->where('inquiries.data.0.phone', null)
+            );
+    }
+
+    public function test_agent_can_paginate_their_inquiry_list(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $property = Property::factory()->for($agent)->create();
+        PropertyInquiryModel::factory()->count(16)->for($property)->create();
+
+        $firstPage = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $firstPage
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 15)
+                ->where('inquiries.total', 16)
+                ->where('inquiries.current_page', 1)
+            );
+
+        $secondPage = $this->actingAs($agent)->get(route('panel.inquiries.index', ['page' => 2]));
+
+        $secondPage
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 1)
+                ->where('inquiries.total', 16)
+                ->where('inquiries.current_page', 2)
+            );
+    }
+
+    public function test_agent_list_excludes_inquiries_for_other_agents_properties(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $otherAgent = User::factory()->agent()->create();
+        $property = Property::factory()->for($agent)->create([
+            'title' => 'Casa propia',
+        ]);
+        $otherProperty = Property::factory()->for($otherAgent)->create([
+            'title' => 'Casa ajena',
+        ]);
+        $ownInquiry = PropertyInquiryModel::factory()->for($property)->create([
+            'name' => 'Ana Pérez',
+        ]);
+        PropertyInquiryModel::factory()->for($otherProperty)->create([
+            'name' => 'Luis Rojas',
+        ]);
+
+        $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 1)
+                ->where('inquiries.data.0.id', $ownInquiry->id)
+                ->where('inquiries.data.0.name', 'Ana Pérez')
+            );
+    }
+
+    public function test_agent_keeps_inquiries_after_their_properties_are_closed(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $saleProperty = Property::factory()->for($agent)->create([
+            'operation' => 'sale',
+            'status' => 'available',
+            'title' => 'Casa en venta',
+        ]);
+        $rentProperty = Property::factory()->for($agent)->create([
+            'operation' => 'rent',
+            'status' => 'available',
+            'title' => 'Departamento en alquiler',
+        ]);
+        $saleInquiry = PropertyInquiryModel::factory()->for($saleProperty)->create([
+            'created_at' => '2026-10-28 14:30:00',
+        ]);
+        $rentInquiry = PropertyInquiryModel::factory()->for($rentProperty)->create([
+            'created_at' => '2026-10-28 14:31:00',
+        ]);
+
+        $this->actingAs($agent)
+            ->patch(route('panel.properties.close', $saleProperty))
+            ->assertRedirect(route('panel.properties.index'));
+
+        $this->actingAs($agent)
+            ->patch(route('panel.properties.close', $rentProperty))
+            ->assertRedirect(route('panel.properties.index'));
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $saleProperty->id,
+            'status' => 'sold',
+        ]);
+        $this->assertDatabaseHas('properties', [
+            'id' => $rentProperty->id,
+            'status' => 'rented',
+        ]);
+
+        $response = $this->actingAs($agent)->get(route('panel.inquiries.index'));
+
+        $response
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->where('inquiries.data', function (Collection $inquiries) use ($saleInquiry, $rentInquiry): bool {
+                    $actualIds = $inquiries->pluck('id')->sort()->values()->all();
+                    $expectedIds = collect([$saleInquiry->id, $rentInquiry->id])->sort()->values()->all();
+
+                    return $actualIds === $expectedIds;
+                })
+            );
+    }
+
+    public function test_guest_is_redirected_to_login_when_opening_agent_inquiries(): void
+    {
+        $this->get(route('panel.inquiries.index'))
+            ->assertRedirect(route('login'));
     }
 
     public function test_company_email_contains_the_visitor_details_and_the_property_title_and_link(): void
