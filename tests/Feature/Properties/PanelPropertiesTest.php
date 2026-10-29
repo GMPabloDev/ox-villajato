@@ -791,8 +791,13 @@ class PanelPropertiesTest extends TestCase
         $this->get(route('panel.properties.index'))->assertRedirect(route('login'));
         $this->get(route('panel.properties.edit', $property))->assertRedirect(route('login'));
         $this->put(route('panel.properties.update', $property))->assertRedirect(route('login'));
+        $this->patch(route('panel.properties.close', $property))->assertRedirect(route('login'));
+        $this->patch(route('panel.properties.reopen', $property))->assertRedirect(route('login'));
 
-        $this->assertDatabaseCount('properties', 1);
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'status' => 'available',
+        ]);
         $this->assertDatabaseCount('property_photos', 1);
     }
 
