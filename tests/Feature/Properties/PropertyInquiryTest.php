@@ -413,6 +413,35 @@ class PropertyInquiryTest extends TestCase
             );
     }
 
+    public function test_agent_keeps_inquiries_after_archiving_their_property(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $property = Property::factory()->for($agent)->create([
+            'status' => 'available',
+            'title' => 'Casa archivada',
+        ]);
+        $inquiry = PropertyInquiryModel::factory()->for($property)->create();
+
+        $this->actingAs($agent)
+            ->patch(route('panel.properties.archive', $property))
+            ->assertRedirect(route('panel.properties.index'));
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'status' => 'archived',
+        ]);
+
+        $this->actingAs($agent)
+            ->get(route('panel.inquiries.index'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/inquiries/index')
+                ->has('inquiries.data', 1)
+                ->where('inquiries.data.0.id', $inquiry->id)
+                ->where('inquiries.data.0.property.title', 'Casa archivada')
+            );
+    }
+
     public function test_admin_keeps_inquiries_after_properties_are_sold_or_rented(): void
     {
         $admin = User::factory()->admin()->create();
@@ -538,6 +567,21 @@ class PropertyInquiryTest extends TestCase
         $this->post(route('properties.inquiries.store', $property), $this->validPayload())
             ->assertNotFound();
 
+        Mail::assertNothingSent();
+    }
+
+    public function test_archived_property_inquiry_returns_not_found_without_saving_or_sending_an_email(): void
+    {
+        Mail::fake();
+
+        $property = Property::factory()->create([
+            'status' => 'archived',
+        ]);
+
+        $this->post(route('properties.inquiries.store', $property), $this->validPayload())
+            ->assertNotFound();
+
+        $this->assertDatabaseCount('property_inquiries', 0);
         Mail::assertNothingSent();
     }
 

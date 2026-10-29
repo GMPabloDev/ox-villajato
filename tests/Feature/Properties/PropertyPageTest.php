@@ -84,4 +84,13 @@ class PropertyPageTest extends TestCase
                 ->where('property.photos.2.position', 3)
             );
     }
+
+    public function test_archived_property_page_returns_not_found(): void
+    {
+        $property = Property::factory()->create([
+            'status' => 'archived',
+        ]);
+
+        $this->get(route('properties.show', $property))->assertNotFound();
+    }
 }
