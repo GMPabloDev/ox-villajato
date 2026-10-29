@@ -2,7 +2,7 @@
 
 - **Estado:** Aprobada
 - **Fecha:** 2026-10-27
-- **Origen:** `backlog.md`, historia 4
+- **Origen:** `backlogs/inmobiliaria-v1.md`, historia 4
 - **Depende de:** #1
 - **Siguiente paso:** `/pair`
 
