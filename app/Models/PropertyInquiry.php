@@ -21,6 +21,7 @@ use Illuminate\Support\Carbon;
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read Property|null $property
+ * @property-read User|null $publisher
  */
 #[Fillable(['property_title', 'publisher_id', 'name', 'email', 'phone', 'message'])]
 class PropertyInquiry extends Model
@@ -34,5 +35,13 @@ class PropertyInquiry extends Model
     public function property(): BelongsTo
     {
         return $this->belongsTo(Property::class);
+    }
+
+    /**
+     * @return BelongsTo<User, $this>
+     */
+    public function publisher(): BelongsTo
+    {
+        return $this->belongsTo(User::class);
     }
 }

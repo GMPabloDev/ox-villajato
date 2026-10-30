@@ -16,7 +16,9 @@ class PropertyInquirySnapshotMigrationTest extends TestCase
     public function test_existing_inquiry_is_backfilled_for_admin_history(): void
     {
         $admin = User::factory()->admin()->create();
-        $publisher = User::factory()->agent()->create();
+        $publisher = User::factory()->agent()->create([
+            'name' => 'Agente histórico',
+        ]);
         $title = 'Casa consultada antes de la migración';
         $property = Property::factory()->for($publisher)->create([
             'title' => $title,
@@ -55,6 +57,7 @@ class PropertyInquirySnapshotMigrationTest extends TestCase
                 ->where('canSeeAllInquiries', true)
                 ->where('inquiries.data.0.id', $inquiryId)
                 ->where('inquiries.data.0.property.title', $title)
+                ->where('inquiries.data.0.publisher.name', 'Agente histórico')
                 ->where('inquiries.data.0.name', 'Ana Pérez')
                 ->where('inquiries.data.0.email', 'ana@example.com')
                 ->where('inquiries.data.0.phone', '+51 987 654 321')

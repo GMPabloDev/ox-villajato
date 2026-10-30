@@ -719,7 +719,9 @@ class PropertyDeletionTest extends TestCase
         Storage::fake($disk);
 
         $admin = User::factory()->admin()->create();
-        $agent = User::factory()->agent()->create();
+        $agent = User::factory()->agent()->create([
+            'name' => 'Agente publicador',
+        ]);
         $title = 'Casa archivada con consulta';
         $property = Property::factory()->for($agent)->create([
             'status' => 'archived',
@@ -758,6 +760,7 @@ class PropertyDeletionTest extends TestCase
                 ->where('canSeeAllInquiries', true)
                 ->where('inquiries.data.0.id', $inquiry->id)
                 ->where('inquiries.data.0.property.title', $title)
+                ->where('inquiries.data.0.publisher.name', 'Agente publicador')
                 ->where('inquiries.data.0.name', 'Ana Pérez')
                 ->where('inquiries.data.0.email', 'ana@example.com')
                 ->where('inquiries.data.0.phone', '+51 987 654 321')

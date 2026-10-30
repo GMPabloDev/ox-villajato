@@ -8,6 +8,9 @@ type PropertyInquiry = {
     property: {
         title: string;
     };
+    publisher?: {
+        name: string | null;
+    };
     name: string;
     email: string;
     phone: string | null;
@@ -80,6 +83,13 @@ export default function PanelInquiriesIndex({
                                             <h2 className="font-semibold">
                                                 {inquiry.property.title}
                                             </h2>
+                                            {canSeeAllInquiries &&
+                                                inquiry.publisher?.name && (
+                                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                                        Publicada por{' '}
+                                                        {inquiry.publisher.name}
+                                                    </p>
+                                                )}
                                             <p className="text-sm text-neutral-500 dark:text-neutral-400">
                                                 {inquiry.name}
                                             </p>

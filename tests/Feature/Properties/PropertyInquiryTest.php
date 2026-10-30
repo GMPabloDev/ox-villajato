@@ -106,6 +106,7 @@ class PropertyInquiryTest extends TestCase
                 ->component('panel/inquiries/index')
                 ->has('inquiries.data', 1)
                 ->where('canSeeAllInquiries', false)
+                ->missing('inquiries.data.0.publisher')
                 ->where('inquiries.data.0.property.title', 'Casa frente al parque')
                 ->where('inquiries.data.0.name', 'Ana Pérez')
                 ->where('inquiries.data.0.email', 'ana@example.com')
@@ -120,9 +121,15 @@ class PropertyInquiryTest extends TestCase
 
     public function test_admin_sees_inquiries_for_all_properties_with_visitor_details(): void
     {
-        $admin = User::factory()->admin()->create();
-        $firstAgent = User::factory()->agent()->create();
-        $secondAgent = User::factory()->agent()->create();
+        $admin = User::factory()->admin()->create([
+            'name' => 'Administradora Central',
+        ]);
+        $firstAgent = User::factory()->agent()->create([
+            'name' => 'Agente Ana',
+        ]);
+        $secondAgent = User::factory()->agent()->create([
+            'name' => 'Agente Luis',
+        ]);
 
         $adminProperty = Property::factory()->for($admin)->create([
             'title' => 'Propiedad del administrador',
@@ -170,6 +177,7 @@ class PropertyInquiryTest extends TestCase
                 ->where('canSeeAllInquiries', true)
                 ->where('inquiries.data.0.id', $secondAgentInquiry->id)
                 ->where('inquiries.data.0.property.title', $secondAgentProperty->title)
+                ->where('inquiries.data.0.publisher.name', 'Agente Luis')
                 ->where('inquiries.data.0.name', $secondAgentInquiry->name)
                 ->where('inquiries.data.0.email', $secondAgentInquiry->email)
                 ->where('inquiries.data.0.phone', $secondAgentInquiry->phone)
@@ -180,6 +188,7 @@ class PropertyInquiryTest extends TestCase
                 )
                 ->where('inquiries.data.1.id', $firstAgentInquiry->id)
                 ->where('inquiries.data.1.property.title', $firstAgentProperty->title)
+                ->where('inquiries.data.1.publisher.name', 'Agente Ana')
                 ->where('inquiries.data.1.name', $firstAgentInquiry->name)
                 ->where('inquiries.data.1.email', $firstAgentInquiry->email)
                 ->where('inquiries.data.1.phone', $firstAgentInquiry->phone)
@@ -190,6 +199,7 @@ class PropertyInquiryTest extends TestCase
                 )
                 ->where('inquiries.data.2.id', $adminInquiry->id)
                 ->where('inquiries.data.2.property.title', $adminProperty->title)
+                ->where('inquiries.data.2.publisher.name', 'Administradora Central')
                 ->where('inquiries.data.2.name', $adminInquiry->name)
                 ->where('inquiries.data.2.email', $adminInquiry->email)
                 ->where('inquiries.data.2.phone', $adminInquiry->phone)

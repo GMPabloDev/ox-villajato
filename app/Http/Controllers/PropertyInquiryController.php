@@ -22,7 +22,11 @@ class PropertyInquiryController extends Controller
         $canSeeAllInquiries = $user->isAdmin();
 
         $inquiries = PropertyInquiryModel::query()
-            ->select(['id', 'property_id', 'property_title', 'name', 'email', 'phone', 'message', 'created_at'])
+            ->select(['id', 'property_id', 'property_title', 'publisher_id', 'name', 'email', 'phone', 'message', 'created_at'])
+            ->when(
+                $canSeeAllInquiries,
+                fn (Builder $query): Builder => $query->with('publisher:id,name'),
+            )
             ->when(
                 ! $canSeeAllInquiries,
                 fn (Builder $query): Builder => $query->where('publisher_id', $user->id),
@@ -35,6 +39,11 @@ class PropertyInquiryController extends Controller
                 'property' => [
                     'title' => $inquiry->property_title,
                 ],
+                ...($canSeeAllInquiries ? [
+                    'publisher' => [
+                        'name' => $inquiry->publisher?->name,
+                    ],
+                ] : []),
                 'name' => $inquiry->name,
                 'email' => $inquiry->email,
                 'phone' => $inquiry->phone,
