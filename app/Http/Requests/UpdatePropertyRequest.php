@@ -27,9 +27,10 @@ class UpdatePropertyRequest extends FormRequest
      */
     public function rules(): array
     {
-        $propertyId = $this->route('property') instanceof Property
-            ? $this->route('property')->id
-            : $this->route('property');
+        $routeProperty = $this->route('property');
+        $propertyId = $routeProperty instanceof Property
+            ? $routeProperty->id
+            : (is_string($routeProperty) ? $routeProperty : null);
 
         return [
             ...$this->propertyRules(),
@@ -51,7 +52,7 @@ class UpdatePropertyRequest extends FormRequest
                 return;
             }
 
-            /** @var array<int, mixed> $photoOrder */
+            /** @var array<int, mixed>|null $photoOrder */
             $photoOrder = $this->input('photo_order', []);
             /** @var array<int, mixed>|null $photos */
             $photos = $this->file('photos', $this->input('photos'));

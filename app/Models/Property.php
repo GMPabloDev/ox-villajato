@@ -91,6 +91,10 @@ class Property extends Model
         return $this->status === PropertyStatus::Available;
     }
 
+    /**
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
     #[Scope]
     protected function available(Builder $query): Builder
     {
