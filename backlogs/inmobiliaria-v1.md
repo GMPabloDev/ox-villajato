@@ -12,11 +12,11 @@ Inmobiliaria única en Perú. Casas y departamentos en venta y alquiler. Recorri
 
 ## Historias refinadas
 
-- [Historia 1 — Publicar propiedad](../stories/01-publicar-propiedad.md)
-- [Historia 2 — Consulta desde la ficha](../stories/02-consulta-desde-la-ficha.md)
-- [Historia 3 — Filtrar el catálogo](../stories/03-filtrar-catalogo.md)
-- [Historia 4 — Editar propiedad](../stories/04-editar-propiedad.md)
-- [Historia 5 — Marcar vendida o alquilada](../stories/05-marcar-vendida-alquilada.md)
+- [Historia 1 — Publicar propiedad](../specs/01-publicar-propiedad.md)
+- [Historia 2 — Consulta desde la ficha](../specs/02-consulta-desde-la-ficha.md)
+- [Historia 3 — Filtrar el catálogo](../specs/03-filtrar-catalogo.md)
+- [Historia 4 — Editar propiedad](../specs/04-editar-propiedad.md)
+- [Historia 5 — Marcar vendida o alquilada](../specs/05-marcar-vendida-alquilada.md)
 
 ## Deuda técnica
 
