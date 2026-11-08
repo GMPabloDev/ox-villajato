@@ -13,3 +13,13 @@ El administrador crea las cuentas y puede ver todas las propiedades y contactos.
 5. Como administrador, quiero ver los contactos recibidos para todas las propiedades, para supervisar las consultas. Requires: #3
 
 El historial de modificaciones queda para más adelante.
+
+## Historias refinadas
+
+- [SPEC 06 — Crear cuentas para agentes](../specs/06-crear-cuentas-agentes.md) (historia 1)
+- [SPEC 07 — Gestionar propiedades propias](../specs/07-gestionar-propiedades-agente.md) (historia 2)
+- [SPEC 08 — Consultas de propiedades del agente](../specs/08-consultas-propiedades-agente.md) (historia 3)
+- Historia 4 — absorbida por la SPEC 07: el acceso global del administrador quedó como criterio de aceptación de esa spec, sin spec propia.
+- [SPEC 09 — Consultas de todas las propiedades](../specs/09-consultas-todas-propiedades.md) (historia 5)
+
+Todas las historias están implementadas y cubiertas por pruebas en `tests/`.

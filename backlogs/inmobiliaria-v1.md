@@ -18,6 +18,8 @@ Inmobiliaria única en Perú. Casas y departamentos en venta y alquiler. Recorri
 - [Historia 4 — Editar propiedad](../specs/04-editar-propiedad.md)
 - [Historia 5 — Marcar vendida o alquilada](../specs/05-marcar-vendida-alquilada.md)
 
+Todas las historias están implementadas y cubiertas por pruebas en `tests/`.
+
 ## Deuda técnica
 
 - **Listado del panel:** paginar y reducir el payload de `/panel/properties` para enviar solo portada, título, precio y enlace de edición; hoy trae todas las propiedades con descripción y todas sus fotos. Queda fuera de la historia 4 y de la historia 1, que excluye “Paginación y búsqueda”.
