@@ -58,7 +58,7 @@ export default function PropertiesIndex({
             <Head title="Propiedades" />
 
             <div className="mb-8">
-                <h1 className="text-2xl font-semibold tracking-tight">
+                <h1 className="text-4xl font-bold tracking-tight">
                     Propiedades
                 </h1>
                 <p className="mt-1 text-sm text-neutral-500 dark:text-neutral-400">
@@ -69,7 +69,7 @@ export default function PropertiesIndex({
             <Form
                 key={`${filters.operation ?? ''}-${filters.type ?? ''}-${filters.zone ?? ''}`}
                 {...home.form()}
-                className="mb-8 flex flex-col gap-4 rounded-xl border border-neutral-200 bg-white p-4 shadow-sm dark:border-neutral-800 dark:bg-neutral-900"
+                className="mb-8 flex flex-col gap-4 rounded-xl border border-border bg-card p-4 shadow-sm "
             >
                 {({ processing }) => (
                     <>
@@ -148,7 +148,7 @@ export default function PropertiesIndex({
             {properties.length === 0 ? (
                 hasActiveFilters ? (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
-                        <SearchX className="mb-3 size-10 text-neutral-400" />
+                        <SearchX className="mb-3 size-10 text-muted-foreground" />
                         <p className="font-medium">
                             No hay propiedades para esos filtros.
                         </p>
@@ -162,7 +162,7 @@ export default function PropertiesIndex({
                     </div>
                 ) : (
                     <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
-                        <Building2 className="mb-3 size-10 text-neutral-400" />
+                        <Building2 className="mb-3 size-10 text-muted-foreground" />
                         <p className="font-medium">
                             No hay propiedades disponibles.
                         </p>
@@ -177,9 +177,9 @@ export default function PropertiesIndex({
                         <Link
                             key={property.id}
                             href={property.url}
-                            className="group overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm transition-shadow hover:shadow-md dark:border-neutral-800 dark:bg-neutral-900"
+                            className="group overflow-hidden rounded-xl border border-border bg-card shadow-sm transition-shadow hover:shadow-md "
                         >
-                            <div className="aspect-[4/3] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+                            <div className="aspect-[4/3] overflow-hidden bg-muted ">
                                 {property.cover_photo_url ? (
                                     <img
                                         src={property.cover_photo_url}
@@ -188,17 +188,17 @@ export default function PropertiesIndex({
                                         loading="lazy"
                                     />
                                 ) : (
-                                    <div className="flex size-full items-center justify-center text-neutral-400">
+                                    <div className="flex size-full items-center justify-center text-muted-foreground">
                                         <Building2 className="size-10" />
                                     </div>
                                 )}
                             </div>
                             <div className="space-y-3 p-4">
                                 <div className="flex items-center justify-between gap-2 text-xs font-medium">
-                                    <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                                    <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
                                         {property.operation_label}
                                     </span>
-                                    <span className="text-neutral-500 dark:text-neutral-400">
+                                    <span className="text-muted-foreground">
                                         {property.type_label}
                                     </span>
                                 </div>
@@ -206,7 +206,7 @@ export default function PropertiesIndex({
                                     <h2 className="line-clamp-2 font-semibold">
                                         {property.title}
                                     </h2>
-                                    <p className="mt-1 flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400">
+                                    <p className="mt-1 flex items-center gap-1 text-sm text-muted-foreground">
                                         <MapPin className="size-3.5" />
                                         {property.city} · {property.zone}
                                     </p>

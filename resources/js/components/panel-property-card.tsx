@@ -27,8 +27,8 @@ export function PanelPropertyCard({
         contentSpacing === 'compact' ? 'space-y-2 p-4' : 'space-y-3 p-4';
 
     return (
-        <li className="overflow-hidden rounded-xl border border-neutral-200 bg-white shadow-sm dark:border-neutral-800 dark:bg-neutral-900">
-            <div className="aspect-[4/3] overflow-hidden bg-neutral-100 dark:bg-neutral-800">
+        <li className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ">
+            <div className="aspect-[4/3] overflow-hidden bg-muted ">
                 {property.cover_photo_url ? (
                     <img
                         src={property.cover_photo_url}
@@ -37,7 +37,7 @@ export function PanelPropertyCard({
                         loading="lazy"
                     />
                 ) : (
-                    <div className="flex size-full items-center justify-center text-neutral-400">
+                    <div className="flex size-full items-center justify-center text-muted-foreground">
                         <Building2 className="size-10" />
                     </div>
                 )}

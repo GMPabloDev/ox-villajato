@@ -103,8 +103,8 @@ export default function ArchivedProperties({
                 />
 
                 {properties.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
-                        <Building2 className="mb-3 size-10 text-neutral-400" />
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center ">
+                        <Building2 className="mb-3 size-10 text-muted-foreground" />
                         <p className="font-medium">
                             No hay propiedades archivadas.
                         </p>
@@ -117,7 +117,7 @@ export default function ArchivedProperties({
                                 property={property}
                                 contentSpacing="compact"
                                 metadata={
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                    <p className="text-sm text-muted-foreground">
                                         {property.city} · {property.zone}
                                     </p>
                                 }

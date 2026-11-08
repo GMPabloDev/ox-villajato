@@ -37,7 +37,7 @@ export default function PropertyShow({ property }: { property: Property }) {
 
             <Link
                 href={home()}
-                className="mb-6 inline-flex items-center gap-2 text-sm text-neutral-500 transition-colors hover:text-neutral-900 dark:text-neutral-400 dark:hover:text-white"
+                className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
             >
                 <ArrowLeft className="size-4" />
                 Volver al catálogo
@@ -45,7 +45,7 @@ export default function PropertyShow({ property }: { property: Property }) {
 
             <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
                 <div className="space-y-4">
-                    <div className="aspect-[4/3] overflow-hidden rounded-xl bg-neutral-100 dark:bg-neutral-800">
+                    <div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted ">
                         {property.cover_photo_url ? (
                             <img
                                 src={property.cover_photo_url}
@@ -53,7 +53,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                                 className="size-full object-cover"
                             />
                         ) : (
-                            <div className="flex size-full items-center justify-center text-neutral-400">
+                            <div className="flex size-full items-center justify-center text-muted-foreground">
                                 Sin foto
                             </div>
                         )}
@@ -64,7 +64,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                             {property.photos.slice(1).map((photo) => (
                                 <div
                                     key={photo.position}
-                                    className="aspect-[4/3] overflow-hidden rounded-lg bg-neutral-100 dark:bg-neutral-800"
+                                    className="aspect-[4/3] overflow-hidden rounded-lg bg-muted "
                                 >
                                     <img
                                         src={photo.url}
@@ -81,17 +81,17 @@ export default function PropertyShow({ property }: { property: Property }) {
                 <div className="space-y-6">
                     <div>
                         <div className="flex flex-wrap gap-2 text-xs font-medium">
-                            <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                            <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
                                 {property.operation_label}
                             </span>
-                            <span className="rounded-full bg-neutral-100 px-2.5 py-1 text-neutral-700 dark:bg-neutral-800 dark:text-neutral-300">
+                            <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
                                 {property.type_label}
                             </span>
                         </div>
                         <h1 className="mt-3 text-2xl font-semibold tracking-tight">
                             {property.title}
                         </h1>
-                        <p className="mt-2 flex items-center gap-1 text-sm text-neutral-500 dark:text-neutral-400">
+                        <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
                             <MapPin className="size-4" />
                             {property.city} · {property.zone}
                         </p>
@@ -101,7 +101,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                         {property.price_formatted}
                     </p>
 
-                    <div className="grid grid-cols-3 gap-4 rounded-xl border border-neutral-200 p-4 text-sm dark:border-neutral-800">
+                    <div className="grid grid-cols-3 gap-4 rounded-xl border border-border p-4 text-sm ">
                         <div className="flex items-center gap-2">
                             <BedDouble className="size-4" />
                             {property.bedrooms} dorm.
@@ -118,26 +118,26 @@ export default function PropertyShow({ property }: { property: Property }) {
 
                     <div>
                         <h2 className="font-semibold">Descripción</h2>
-                        <p className="mt-2 text-sm leading-6 whitespace-pre-line text-neutral-600 dark:text-neutral-300">
+                        <p className="mt-2 text-sm leading-6 whitespace-pre-line text-muted-foreground">
                             {property.description}
                         </p>
                     </div>
                 </div>
             </div>
 
-            <section className="mt-12 border-t border-neutral-200 pt-8 dark:border-neutral-800">
+            <section className="mt-12 border-t border-border pt-8 ">
                 <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
                     <div>
                         <h2 className="text-xl font-semibold tracking-tight">
                             Consulta esta propiedad
                         </h2>
-                        <p className="mt-2 text-sm leading-6 text-neutral-500 dark:text-neutral-400">
+                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
                             Déjanos tus datos y la inmobiliaria se pondrá en
                             contacto contigo.
                         </p>
                     </div>
 
-                    <div className="rounded-xl border border-neutral-200 bg-white p-6 dark:border-neutral-800 dark:bg-neutral-900">
+                    <div className="rounded-xl border border-border bg-card p-6 ">
                         <Form
                             {...store.form(property.id)}
                             className="space-y-4"
@@ -181,7 +181,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                                     <div className="grid gap-2">
                                         <Label htmlFor="inquiry-phone">
                                             Teléfono{' '}
-                                            <span className="font-normal text-neutral-500 dark:text-neutral-400">
+                                            <span className="font-normal text-muted-foreground">
                                                 (opcional)
                                             </span>
                                         </Label>

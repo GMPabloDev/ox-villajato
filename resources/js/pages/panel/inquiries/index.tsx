@@ -63,8 +63,8 @@ export default function PanelInquiriesIndex({
                 />
 
                 {inquiries.data.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-neutral-300 py-20 text-center dark:border-neutral-700">
-                        <MessageSquare className="size-10 text-neutral-400" />
+                    <div className="flex flex-col items-center justify-center gap-3 rounded-xl border border-dashed border-border py-20 text-center ">
+                        <MessageSquare className="size-10 text-muted-foreground" />
                         <p className="font-medium">{pageText.emptyTitle}</p>
                         <p className="text-sm text-neutral-500 dark:text-neutral-400">
                             {pageText.emptyDescription}
@@ -76,7 +76,7 @@ export default function PanelInquiriesIndex({
                             {inquiries.data.map((inquiry) => (
                                 <li
                                     key={inquiry.id}
-                                    className="rounded-xl border border-neutral-200 bg-white p-4 dark:border-neutral-800 dark:bg-neutral-900"
+                                    className="rounded-xl border border-border bg-card p-4 "
                                 >
                                     <div className="flex flex-wrap items-start justify-between gap-3">
                                         <div className="space-y-1">
@@ -85,7 +85,7 @@ export default function PanelInquiriesIndex({
                                             </h2>
                                             {canSeeAllInquiries &&
                                                 inquiry.publisher?.name && (
-                                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                                    <p className="text-sm text-muted-foreground">
                                                         Publicada por{' '}
                                                         {inquiry.publisher.name}
                                                     </p>
@@ -126,7 +126,7 @@ export default function PanelInquiriesIndex({
                                         </div>
                                         {inquiry.phone !== null && (
                                             <div className="grid gap-1">
-                                                <dt className="text-sm text-neutral-500 dark:text-neutral-400">
+                                                <dt className="text-sm text-muted-foreground">
                                                     Teléfono
                                                 </dt>
                                                 <dd>
@@ -141,7 +141,7 @@ export default function PanelInquiriesIndex({
                                     </dl>
 
                                     <div className="mt-4 grid gap-1">
-                                        <h3 className="text-sm text-neutral-500 dark:text-neutral-400">
+                                        <h3 className="text-sm text-muted-foreground">
                                             Mensaje
                                         </h3>
                                         <p className="whitespace-pre-wrap">

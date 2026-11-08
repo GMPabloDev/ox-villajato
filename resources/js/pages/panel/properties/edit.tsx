@@ -110,9 +110,9 @@ export default function EditPropertyPage({
                                         {orderedPhotos.map((photo, index) => (
                                             <li
                                                 key={photo.id}
-                                                className="overflow-hidden rounded-xl border border-neutral-200 bg-white dark:border-neutral-800 dark:bg-neutral-900"
+                                                className="overflow-hidden rounded-xl border border-border bg-card "
                                             >
-                                                <div className="relative aspect-[4/3] bg-neutral-100 dark:bg-neutral-800">
+                                                <div className="relative aspect-[4/3] bg-muted ">
                                                     <img
                                                         src={photo.url}
                                                         alt={`${property.title} — foto ${index + 1}`}
@@ -188,7 +188,7 @@ export default function EditPropertyPage({
                                         ))}
                                     </ul>
                                 ) : (
-                                    <p className="text-sm text-neutral-500 dark:text-neutral-400">
+                                    <p className="text-sm text-muted-foreground">
                                         Quitaste todas las fotos actuales.
                                         Agrega al menos una nueva para poder
                                         guardar.
@@ -219,7 +219,7 @@ export default function EditPropertyPage({
                                         multiple
                                         accept="image/jpeg,image/png,image/webp"
                                     />
-                                    <p className="text-xs text-neutral-500 dark:text-neutral-400">
+                                    <p className="text-xs text-muted-foreground">
                                         Entre 1 y 8 fotos en total entre las
                                         conservadas y las nuevas, en JPG, PNG o
                                         WebP, de máximo 5 MB cada una. Las
@@ -241,7 +241,7 @@ export default function EditPropertyPage({
 
                                 {progress && (
                                     <div
-                                        className="h-2 w-full overflow-hidden rounded-full bg-neutral-200 dark:bg-neutral-800"
+                                        className="h-2 w-full overflow-hidden rounded-full bg-muted"
                                         role="progressbar"
                                         aria-label="Subiendo fotos"
                                         aria-valuemin={0}
@@ -251,7 +251,7 @@ export default function EditPropertyPage({
                                         )}
                                     >
                                         <div
-                                            className="h-full bg-neutral-900 transition-all dark:bg-neutral-100"
+                                            className="h-full bg-primary transition-all"
                                             style={{
                                                 width: `${progress.percentage ?? 0}%`,
                                             }}
