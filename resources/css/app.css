@@ -11,6 +11,21 @@
     }
 }
 
+/* La imagen se muestra cuando termina de cargar. El script inline de
+   app.blade.php añade vj-image-ready antes de la hidratación, de modo que
+   una imagen cargada no queda oculta esperando a React. */
+.vj-image {
+    opacity: 0;
+}
+
+.vj-image.vj-image-ready {
+    opacity: 1;
+}
+
+.vj-image-ready + .vj-image-skeleton {
+    opacity: 0;
+}
+
 @keyframes vj-enter-up {
     from {
         opacity: 0;

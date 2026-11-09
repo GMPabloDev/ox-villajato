@@ -30,6 +30,36 @@
             }
         </style>
 
+        {{-- Muestra una imagen en cuanto termina de cargar, antes de que React hidrate. --}}
+        <script>
+            document.addEventListener(
+                'load',
+                function (event) {
+                    var image = event.target;
+
+                    if (
+                        image instanceof HTMLImageElement &&
+                        image.classList.contains('vj-image')
+                    ) {
+                        image.classList.add('vj-image-ready');
+                    }
+                },
+                true,
+            );
+        </script>
+
+        <noscript>
+            <style>
+                .vj-image {
+                    opacity: 1;
+                }
+
+                .vj-image-skeleton {
+                    display: none;
+                }
+            </style>
+        </noscript>
+
         <link rel="icon" href="/favicon.svg" type="image/svg+xml">
 
         @fonts
