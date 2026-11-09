@@ -2,6 +2,8 @@
 
 namespace App\Http\Middleware;
 
+use App\Models\PropertyInquiry;
+use App\Models\User;
 use Illuminate\Http\Request;
 use Inertia\Middleware;
 
@@ -41,7 +43,24 @@ class HandleInertiaRequests extends Middleware
             'auth' => [
                 'user' => $request->user(),
             ],
+            'nav' => [
+                'inquiryCount' => $this->inquiryCount($request),
+            ],
             'sidebarOpen' => ! $request->hasCookie('sidebar_state') || $request->cookie('sidebar_state') === 'true',
         ];
+    }
+
+    /**
+     * Count the inquiries the signed-in user can read.
+     */
+    private function inquiryCount(Request $request): int
+    {
+        $user = $request->user();
+
+        if (! $user instanceof User) {
+            return 0;
+        }
+
+        return PropertyInquiry::query()->visibleTo($user)->count();
     }
 }
