@@ -22,14 +22,11 @@ class PropertyInquiryController extends Controller
         $canSeeAllInquiries = $user->isAdmin();
 
         $inquiries = PropertyInquiryModel::query()
+            ->visibleTo($user)
             ->select(['id', 'property_id', 'property_title', 'publisher_id', 'name', 'email', 'phone', 'message', 'created_at'])
             ->when(
                 $canSeeAllInquiries,
                 fn (Builder $query): Builder => $query->with('publisher:id,name'),
-            )
-            ->when(
-                ! $canSeeAllInquiries,
-                fn (Builder $query): Builder => $query->where('publisher_id', $user->id),
             )
             ->latest()
             ->latest('id')
