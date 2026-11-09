@@ -101,14 +101,10 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function create(): Response
-    {
-        return Inertia::render('properties/create');
-    }
-
     public function panelIndex(Request $request): Response
     {
         $user = $request->user();
+        $disk = (string) config('properties.photos_disk');
 
         $properties = Property::query()
             ->where('status', '!=', PropertyStatus::Archived)
@@ -121,14 +117,20 @@ class PropertyController extends Controller
             'properties' => $properties
                 ->map(fn (Property $property): array => [
                     ...(new PropertyResource($property))->resolve(),
+                    'photos' => $property->photos
+                        ->map(fn (PropertyPhoto $photo): array => [
+                            'id' => $photo->id,
+                            'url' => Storage::disk($disk)->url($photo->path),
+                            'position' => $photo->position,
+                        ])
+                        ->values()
+                        ->all(),
                     'status' => $property->status->value,
                     'status_label' => $property->status->label(),
                     'status_action' => $property->status->action(),
                     'status_action_label' => $property->status->actionLabel($property->operation),
-                    'edit_url' => route('panel.properties.edit', $property),
                 ])
                 ->all(),
-            'create_url' => route('properties.create'),
         ]);
     }
 
@@ -401,38 +403,6 @@ class PropertyController extends Controller
         ]);
 
         return to_route('panel.properties.index');
-    }
-
-    public function edit(Property $property): Response
-    {
-        $property->load('photos');
-
-        $disk = (string) config('properties.photos_disk');
-
-        return Inertia::render('panel/properties/edit', [
-            'property' => [
-                'id' => $property->id,
-                'operation' => $property->operation->value,
-                'type' => $property->type->value,
-                'title' => $property->title,
-                'description' => $property->description,
-                'price' => $property->price,
-                'currency' => $property->currency->value,
-                'city' => $property->city,
-                'zone' => $property->zone,
-                'bedrooms' => $property->bedrooms,
-                'bathrooms' => $property->bathrooms,
-                'area' => $property->area,
-                'photos' => $property->photos
-                    ->map(fn (PropertyPhoto $photo): array => [
-                        'id' => $photo->id,
-                        'url' => Storage::disk($disk)->url($photo->path),
-                        'position' => $photo->position,
-                    ])
-                    ->values()
-                    ->all(),
-            ],
-        ]);
     }
 
     public function store(StorePropertyRequest $request): RedirectResponse

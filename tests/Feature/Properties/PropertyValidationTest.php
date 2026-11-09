@@ -20,11 +20,11 @@ class PropertyValidationTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'));
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors([
                 'operation',
                 'type',
@@ -72,11 +72,11 @@ class PropertyValidationTest extends TestCase
         $payload[$field] = $value;
 
         $response = $this->actingAs($user)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'), $payload);
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors([$field => $message]);
 
         $this->assertDatabaseCount('properties', 0);
@@ -109,11 +109,11 @@ class PropertyValidationTest extends TestCase
         $payload[$field] = $value;
 
         $response = $this->actingAs($user)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'), $payload);
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors([$field => $message]);
 
         $this->assertDatabaseCount('properties', 0);
@@ -143,11 +143,11 @@ class PropertyValidationTest extends TestCase
         );
 
         $response = $this->actingAs($user)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'), $payload);
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos' => $message]);
 
         $this->assertDatabaseCount('properties', 0);
@@ -167,11 +167,11 @@ class PropertyValidationTest extends TestCase
         ];
 
         $response = $this->actingAs($user)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'), $payload);
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos.0' => 'Cada foto debe pesar como máximo 5 MB.']);
 
         $this->assertDatabaseCount('properties', 0);
@@ -191,11 +191,11 @@ class PropertyValidationTest extends TestCase
         ];
 
         $response = $this->actingAs($user)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'), $payload);
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos.0' => 'Cada foto debe ser JPG, PNG o WebP.']);
 
         $this->assertDatabaseCount('properties', 0);

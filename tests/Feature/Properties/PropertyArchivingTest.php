@@ -66,16 +66,12 @@ class PropertyArchivingTest extends TestCase
         ]);
     }
 
-    public function test_agent_editing_or_closing_an_archived_property_returns_404(): void
+    public function test_agent_closing_an_archived_property_returns_404(): void
     {
         $agent = User::factory()->agent()->create();
         $property = Property::factory()->for($agent)->create([
             'status' => 'archived',
         ]);
-
-        $this->actingAs($agent)
-            ->get(route('panel.properties.edit', $property))
-            ->assertNotFound();
 
         $this->actingAs($agent)
             ->patch(route('panel.properties.close', $property))

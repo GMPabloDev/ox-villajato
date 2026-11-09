@@ -10,9 +10,6 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', [PropertyController::class, 'index'])->name('home');
 
 Route::middleware(['auth'])->group(function () {
-    Route::get('properties/create', [PropertyController::class, 'create'])
-        ->name('properties.create');
-
     Route::post('properties', [PropertyController::class, 'store'])
         ->name('properties.store');
 });
@@ -52,9 +49,6 @@ Route::middleware('auth')->prefix('panel')->name('panel.')->group(function () {
         ->name('properties.republish');
 
     Route::middleware(EnsurePropertyIsManageable::class)->group(function () {
-        Route::get('properties/{property}/edit', [PropertyController::class, 'edit'])
-            ->name('properties.edit');
-
         Route::put('properties/{property}', [PropertyController::class, 'update'])
             ->name('properties.update');
 

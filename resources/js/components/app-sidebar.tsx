@@ -6,7 +6,6 @@ import {
     FolderGit2,
     LayoutGrid,
     MessageSquare,
-    PlusCircle,
     UserPlus,
 } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
@@ -27,7 +26,6 @@ import { dashboard } from '@/routes';
 import { create as createAgent } from '@/actions/App/Http/Controllers/AgentController';
 import {
     archivedIndex,
-    create as createProperty,
     panelIndex,
 } from '@/actions/App/Http/Controllers/PropertyController';
 import type { NavItem } from '@/types';
@@ -68,11 +66,6 @@ export function AppSidebar() {
             title: 'Consultas',
             href: inquiriesIndex(),
             icon: MessageSquare,
-        },
-        {
-            title: 'Publicar propiedad',
-            href: createProperty(),
-            icon: PlusCircle,
         },
         ...(auth.user.role === 'admin'
             ? [

@@ -1,5 +1,5 @@
-import { Head, Link, useForm } from '@inertiajs/react';
-import { Building2, PlusCircle } from 'lucide-react';
+import { Head, useForm } from '@inertiajs/react';
+import { Building2, Pencil, PlusCircle } from 'lucide-react';
 import { useState } from 'react';
 import {
     archive,
@@ -12,6 +12,9 @@ import {
     PanelPropertyCard,
     type PanelPropertyCardData,
 } from '@/components/panel-property-card';
+import PropertyFormSheet, {
+    type PropertyFormProperty,
+} from '@/components/property-form-sheet';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -26,29 +29,44 @@ import { Spinner } from '@/components/ui/spinner';
 
 type PendingAction = 'archive' | 'close' | 'reopen';
 
-type PanelProperty = PanelPropertyCardData & {
-    status: 'available' | 'archived' | 'sold' | 'rented';
-    status_label: string;
-    status_action: 'close' | 'reopen' | null;
-    status_action_label: string | null;
-    edit_url: string;
-};
+type PanelProperty = PanelPropertyCardData &
+    PropertyFormProperty & {
+        status: 'available' | 'archived' | 'sold' | 'rented';
+        status_label: string;
+        status_action: 'close' | 'reopen' | null;
+        status_action_label: string | null;
+    };
 
 type PendingConfirmation = {
     property: PanelProperty;
     action: PendingAction;
 };
 
+type OpenSheet = { mode: 'create' } | { mode: 'edit'; property: PanelProperty };
+
 export default function PanelPropertiesIndex({
     properties,
-    create_url,
 }: {
     properties: PanelProperty[];
-    create_url: string;
 }) {
     const [pendingConfirmation, setPendingConfirmation] =
         useState<PendingConfirmation | null>(null);
+    const [openSheet, setOpenSheet] = useState<OpenSheet | null>(null);
+    const [isSheetOpen, setIsSheetOpen] = useState(false);
+    const [sheetKey, setSheetKey] = useState(0);
     const { submit, processing } = useForm({});
+
+    function openCreateSheet() {
+        setSheetKey((key) => key + 1);
+        setOpenSheet({ mode: 'create' });
+        setIsSheetOpen(true);
+    }
+
+    function openEditSheet(property: PanelProperty) {
+        setSheetKey((key) => key + 1);
+        setOpenSheet({ mode: 'edit', property });
+        setIsSheetOpen(true);
+    }
 
     function requestStatusChange(property: PanelProperty) {
         if (property.status_action === null) {
@@ -99,16 +117,14 @@ export default function PanelPropertiesIndex({
                         title="Propiedades"
                         description="Propiedades que gestionas, con su portada, título y precio."
                     />
-                    <Button asChild>
-                        <Link href={create_url}>
-                            <PlusCircle className="size-4" />
-                            Publicar propiedad
-                        </Link>
+                    <Button type="button" onClick={openCreateSheet}>
+                        <PlusCircle className="size-4" />
+                        Publicar propiedad
                     </Button>
                 </div>
 
                 {properties.length === 0 ? (
-                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center ">
+                    <div className="flex flex-col items-center justify-center rounded-xl border border-dashed border-border py-20 text-center">
                         <Building2 className="mb-3 size-10 text-muted-foreground" />
                         <p className="font-medium">
                             Aún no hay propiedades para gestionar.
@@ -116,8 +132,12 @@ export default function PanelPropertiesIndex({
                         <p className="mt-1 text-sm text-muted-foreground">
                             Publica la primera para que aparezca en el catálogo.
                         </p>
-                        <Button asChild className="mt-4">
-                            <Link href={create_url}>Publicar propiedad</Link>
+                        <Button
+                            type="button"
+                            className="mt-4"
+                            onClick={openCreateSheet}
+                        >
+                            Publicar propiedad
                         </Button>
                     </div>
                 ) : (
@@ -173,13 +193,13 @@ export default function PanelPropertiesIndex({
                                         </Button>
                                     )}
                                     <Button
-                                        asChild
+                                        type="button"
                                         variant="outline"
                                         className="w-full"
+                                        onClick={() => openEditSheet(property)}
                                     >
-                                        <Link href={property.edit_url}>
-                                            Editar
-                                        </Link>
+                                        <Pencil className="size-4" />
+                                        Editar
                                     </Button>
                                 </div>
                             </PanelPropertyCard>
@@ -233,6 +253,19 @@ export default function PanelPropertiesIndex({
                     </DialogFooter>
                 </DialogContent>
             </Dialog>
+
+            {openSheet !== null && (
+                <PropertyFormSheet
+                    key={sheetKey}
+                    open={isSheetOpen}
+                    onOpenChange={setIsSheetOpen}
+                    property={
+                        openSheet.mode === 'edit'
+                            ? openSheet.property
+                            : undefined
+                    }
+                />
+            )}
         </>
     );
 }

@@ -15,18 +15,6 @@ class AgentPropertyManagementTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_agent_can_open_the_publish_form(): void
-    {
-        $agent = User::factory()->agent()->create();
-
-        $this->actingAs($agent)
-            ->get(route('properties.create'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->component('properties/create')
-            );
-    }
-
     public function test_agent_can_publish_a_property_that_appears_in_the_catalog_and_its_public_page(): void
     {
         Storage::fake('public');
@@ -113,17 +101,15 @@ class AgentPropertyManagementTest extends TestCase
                 ->where('properties.0.status', 'sold')
                 ->where('properties.0.status_action', 'reopen')
                 ->where('properties.0.status_action_label', 'Volver a disponible')
-                ->where('properties.0.edit_url', route('panel.properties.edit', $closed))
                 ->where('properties.1.id', $available->id)
                 ->where('properties.1.title', 'Casa disponible')
                 ->where('properties.1.status', 'available')
                 ->where('properties.1.status_action', 'close')
                 ->where('properties.1.status_action_label', 'Marcar como vendida')
-                ->where('properties.1.edit_url', route('panel.properties.edit', $available))
             );
     }
 
-    public function test_agent_without_properties_sees_empty_state_and_publish_action_even_when_others_have_properties(): void
+    public function test_agent_without_properties_sees_empty_state_even_when_others_have_properties(): void
     {
         $agent = User::factory()->agent()->create();
         $otherAgent = User::factory()->agent()->create();
@@ -140,7 +126,6 @@ class AgentPropertyManagementTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
                 ->has('properties', 0)
-                ->where('create_url', route('properties.create'))
             );
     }
 
@@ -164,11 +149,18 @@ class AgentPropertyManagementTest extends TestCase
         ]);
 
         $this->actingAs($agent)
-            ->get(route('panel.properties.edit', $property))
+            ->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('panel/properties/edit')
-                ->where('property.id', $property->id)
+                ->component('panel/properties/index')
+                ->where('properties.0.id', $property->id)
+                ->where('properties.0.title', 'Casa frente al parque')
+                ->where('properties.0.price', '250000.00')
+                ->where('properties.0.currency', 'PEN')
+                ->where('properties.0.city', 'Lima')
+                ->where('properties.0.zone', 'Miraflores')
+                ->has('properties.0.photos', 1)
+                ->where('properties.0.photos.0.id', $photo->id)
             );
 
         $response = $this->actingAs($agent)->put(route('panel.properties.update', $property), [
@@ -287,7 +279,6 @@ class AgentPropertyManagementTest extends TestCase
     public static function foreignPropertyRoutes(): array
     {
         return [
-            'edit form' => ['get', 'panel.properties.edit', false],
             'update property' => ['put', 'panel.properties.update', true],
             'update property with invalid data' => ['put', 'panel.properties.update', false],
             'close property' => ['patch', 'panel.properties.close', false],
@@ -418,11 +409,11 @@ class AgentPropertyManagementTest extends TestCase
         $agent = User::factory()->agent()->create();
 
         $response = $this->actingAs($agent)
-            ->from(route('properties.create'))
+            ->from(route('panel.properties.index'))
             ->post(route('properties.store'));
 
         $response
-            ->assertRedirect(route('properties.create'))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors([
                 'title' => 'El campo título es obligatorio.',
             ]);
@@ -448,7 +439,7 @@ class AgentPropertyManagementTest extends TestCase
         ]);
 
         $response = $this->actingAs($agent)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 'title' => '',
                 'price' => -10,
@@ -456,7 +447,7 @@ class AgentPropertyManagementTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors([
                 'title' => 'El campo título es obligatorio.',
             ]);

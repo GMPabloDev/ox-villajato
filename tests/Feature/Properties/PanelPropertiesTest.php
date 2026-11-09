@@ -14,18 +14,26 @@ class PanelPropertiesTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_authenticated_member_sees_panel_list_with_cover_title_price_and_edit_link(): void
+    public function test_authenticated_member_sees_panel_list_with_cover_title_price_and_form_data(): void
     {
         $property = Property::factory()->create([
             'title' => 'Casa frente al parque',
+            'description' => 'Casa de tres pisos con jardín.',
             'price' => 250000,
             'currency' => 'PEN',
+            'city' => 'Lima',
+            'zone' => 'Miraflores',
+            'bedrooms' => 3,
+            'bathrooms' => 2,
+            'area' => 120.5,
         ]);
 
         $property->photos()->createMany([
             ['path' => 'properties/cover.jpg', 'position' => 1],
             ['path' => 'properties/second.jpg', 'position' => 2],
         ]);
+
+        $photos = $property->photos()->orderBy('position')->get();
 
         $user = User::factory()->create();
 
@@ -38,9 +46,21 @@ class PanelPropertiesTest extends TestCase
                 ->has('properties', 1)
                 ->where('properties.0.id', $property->id)
                 ->where('properties.0.title', 'Casa frente al parque')
+                ->where('properties.0.description', 'Casa de tres pisos con jardín.')
+                ->where('properties.0.price', '250000.00')
                 ->where('properties.0.price_formatted', 'S/ 250,000')
+                ->where('properties.0.currency', 'PEN')
+                ->where('properties.0.city', 'Lima')
+                ->where('properties.0.zone', 'Miraflores')
+                ->where('properties.0.bedrooms', 3)
+                ->where('properties.0.bathrooms', 2)
+                ->where('properties.0.area', '120.50')
                 ->where('properties.0.cover_photo_url', Storage::disk('public')->url('properties/cover.jpg'))
-                ->where('properties.0.edit_url', route('panel.properties.edit', $property))
+                ->has('properties.0.photos', 2)
+                ->where('properties.0.photos.0.id', $photos[0]->id)
+                ->where('properties.0.photos.0.url', Storage::disk('public')->url('properties/cover.jpg'))
+                ->where('properties.0.photos.1.id', $photos[1]->id)
+                ->where('properties.0.photos.1.url', Storage::disk('public')->url('properties/second.jpg'))
             );
     }
 
@@ -99,7 +119,7 @@ class PanelPropertiesTest extends TestCase
             );
     }
 
-    public function test_panel_list_is_empty_with_a_publish_action_when_there_are_no_properties(): void
+    public function test_panel_list_is_empty_when_there_are_no_properties(): void
     {
         $user = User::factory()->create();
 
@@ -110,11 +130,10 @@ class PanelPropertiesTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
                 ->has('properties', 0)
-                ->where('create_url', route('properties.create'))
             );
     }
 
-    public function test_edit_form_preloads_data_and_photos_ordered_by_position(): void
+    public function test_panel_list_preloads_the_data_and_ordered_photos_for_the_edit_sheet(): void
     {
         $property = Property::factory()->create([
             'operation' => 'sale',
@@ -137,33 +156,33 @@ class PanelPropertiesTest extends TestCase
 
         $user = User::factory()->create();
 
-        $response = $this->actingAs($user)->get(route('panel.properties.edit', $property));
+        $response = $this->actingAs($user)->get(route('panel.properties.index'));
 
         $photos = $property->photos()->orderBy('position')->get();
 
         $response
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->component('panel/properties/edit')
-                ->where('property.id', $property->id)
-                ->where('property.operation', 'sale')
-                ->where('property.type', 'house')
-                ->where('property.title', 'Casa frente al parque')
-                ->where('property.description', 'Casa de tres pisos con jardín.')
-                ->where('property.price', '250000.00')
-                ->where('property.currency', 'PEN')
-                ->where('property.city', 'Lima')
-                ->where('property.zone', 'Miraflores')
-                ->where('property.bedrooms', 3)
-                ->where('property.bathrooms', 2)
-                ->where('property.area', '120.50')
-                ->has('property.photos', 2)
-                ->where('property.photos.0.id', $photos[0]->id)
-                ->where('property.photos.0.url', Storage::disk('public')->url('properties/cover.jpg'))
-                ->where('property.photos.0.position', 1)
-                ->where('property.photos.1.id', $photos[1]->id)
-                ->where('property.photos.1.url', Storage::disk('public')->url('properties/living.jpg'))
-                ->where('property.photos.1.position', 2)
+                ->component('panel/properties/index')
+                ->where('properties.0.id', $property->id)
+                ->where('properties.0.operation', 'sale')
+                ->where('properties.0.type', 'house')
+                ->where('properties.0.title', 'Casa frente al parque')
+                ->where('properties.0.description', 'Casa de tres pisos con jardín.')
+                ->where('properties.0.price', '250000.00')
+                ->where('properties.0.currency', 'PEN')
+                ->where('properties.0.city', 'Lima')
+                ->where('properties.0.zone', 'Miraflores')
+                ->where('properties.0.bedrooms', 3)
+                ->where('properties.0.bathrooms', 2)
+                ->where('properties.0.area', '120.50')
+                ->has('properties.0.photos', 2)
+                ->where('properties.0.photos.0.id', $photos[0]->id)
+                ->where('properties.0.photos.0.url', Storage::disk('public')->url('properties/cover.jpg'))
+                ->where('properties.0.photos.0.position', 1)
+                ->where('properties.0.photos.1.id', $photos[1]->id)
+                ->where('properties.0.photos.1.url', Storage::disk('public')->url('properties/living.jpg'))
+                ->where('properties.0.photos.1.position', 2)
             );
     }
 
@@ -187,7 +206,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 'operation' => 'rent',
                 'type' => 'apartment',
@@ -255,7 +274,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'Casa frente al parque remodelada',
@@ -311,7 +330,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'operation' => 'rent',
@@ -372,7 +391,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property),
                 'photo_order' => [$keptId],
@@ -428,7 +447,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property),
                 // El formulario real no envía photo_order cuando no queda ninguna foto.
@@ -475,7 +494,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property),
                 'photo_order' => $reordered,
@@ -513,7 +532,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property),
                 'photo_order' => $ids,
@@ -549,7 +568,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => '',
@@ -559,7 +578,7 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors([
                 'title' => 'El campo título es obligatorio.',
                 'price' => 'El campo precio debe ser mayor que cero.',
@@ -584,13 +603,13 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), $this->scalarPayload($property, [
                 'title' => 'No debe guardarse',
             ]));
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos' => 'Debes adjuntar al menos una foto.']);
 
         $this->assertDatabaseHas('properties', [
@@ -611,7 +630,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'No debe guardarse',
@@ -621,7 +640,7 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos' => 'Puedes adjuntar como máximo 8 fotos.']);
 
         $this->assertDatabaseHas('properties', [
@@ -642,7 +661,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'No debe guardarse',
@@ -652,7 +671,7 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos.0' => 'Cada foto debe ser JPG, PNG o WebP.']);
 
         $this->assertDatabaseHas('properties', [
@@ -673,7 +692,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'No debe guardarse',
@@ -683,7 +702,7 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photos.0' => 'Cada foto debe pesar como máximo 5 MB.']);
 
         $this->assertDatabaseHas('properties', [
@@ -707,7 +726,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'No debe guardarse',
@@ -716,7 +735,7 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photo_order.0' => 'Una de las fotos seleccionadas no es válida.']);
 
         $this->assertDatabaseHas('properties', [
@@ -743,7 +762,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'No debe guardarse',
@@ -752,7 +771,7 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photo_order.0' => 'Cada foto debe aparecer una sola vez.']);
 
         $this->assertPhotosUnchanged($property, [$photoId]);
@@ -768,7 +787,7 @@ class PanelPropertiesTest extends TestCase
         $user = User::factory()->create();
 
         $response = $this->actingAs($user)
-            ->from(route('panel.properties.edit', $property))
+            ->from(route('panel.properties.index'))
             ->put(route('panel.properties.update', $property), [
                 ...$this->scalarPayload($property, [
                     'title' => 'No debe guardarse',
@@ -777,19 +796,18 @@ class PanelPropertiesTest extends TestCase
             ]);
 
         $response
-            ->assertRedirect(route('panel.properties.edit', $property))
+            ->assertRedirect(route('panel.properties.index'))
             ->assertSessionHasErrors(['photo_order' => 'El campo fotos debe ser una lista ordenada.']);
 
         $this->assertPhotosUnchanged($property, [$photoId]);
     }
 
-    public function test_guest_is_redirected_to_login_for_panel_list_edit_and_update(): void
+    public function test_guest_is_redirected_to_login_for_panel_list_and_update(): void
     {
         $property = Property::factory()->create();
         $property->photos()->create(['path' => 'properties/cover.jpg', 'position' => 1]);
 
         $this->get(route('panel.properties.index'))->assertRedirect(route('login'));
-        $this->get(route('panel.properties.edit', $property))->assertRedirect(route('login'));
         $this->put(route('panel.properties.update', $property))->assertRedirect(route('login'));
         $this->patch(route('panel.properties.close', $property))->assertRedirect(route('login'));
         $this->patch(route('panel.properties.reopen', $property))->assertRedirect(route('login'));
