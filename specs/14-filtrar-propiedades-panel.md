@@ -1,6 +1,6 @@
 # SPEC 14 — Filtrar propiedades del panel
 
-> **Estado:** Borrador
+> **Estado:** AProbada
 > **Depende de:** SPEC 05, SPEC 07, SPEC 10, SPEC 11
 > **Fecha:** 2026-11-09
 > **Objetivo:** Hacer funcionales los filtros, la búsqueda y el orden del panel de propiedades, con resultados paginados.
