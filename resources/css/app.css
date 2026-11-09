@@ -74,6 +74,14 @@
         animation: vj-enter-image 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
     }
 
+    .vj-photo-enter {
+        animation: vj-enter-image 0.8s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .vj-detail-enter {
+        animation: vj-enter-up 0.7s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
     .vj-menu-fade {
         animation: vj-menu-fade 0.18s ease-out both;
     }

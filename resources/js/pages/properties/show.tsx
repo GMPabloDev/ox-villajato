@@ -1,24 +1,23 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { ArrowLeft, Bath, BedDouble, MapPin, Maximize } from 'lucide-react';
+import { Bath, BedDouble, Maximize, type LucideIcon } from 'lucide-react';
 import { store } from '@/actions/App/Http/Controllers/PropertyInquiryController';
 import InputError from '@/components/input-error';
-import { Button } from '@/components/ui/button';
+import PropertyPhotoGallery, {
+    type PropertyPhoto,
+} from '@/components/property-photo-gallery';
+import PublicContainer from '@/components/public-container';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
-import { Spinner } from '@/components/ui/spinner';
 import { Textarea } from '@/components/ui/textarea';
+import type { PropertyOperationValue } from '@/lib/property-options';
+import { cn } from '@/lib/utils';
 import { home } from '@/routes';
-
-type PropertyPhoto = {
-    url: string;
-    position: number;
-};
 
 type Property = {
     id: number;
     title: string;
     description: string;
-    operation_label: string;
+    operation: PropertyOperationValue;
     type_label: string;
     price_formatted: string;
     city: string;
@@ -26,160 +25,213 @@ type Property = {
     bedrooms: number;
     bathrooms: number;
     area: string;
-    cover_photo_url: string | null;
     photos: PropertyPhoto[];
 };
 
+const fieldClassName =
+    'h-auto rounded-[7px] border-border bg-card px-3 py-3 text-[13px] shadow-none md:text-[13px]';
+
+const defaultMessage =
+    'Hola, me interesa recibir más información sobre esta propiedad.';
+
+function PropertyFeature({
+    icon: Icon,
+    value,
+    label,
+}: {
+    icon: LucideIcon;
+    value: string;
+    label: string;
+}) {
+    return (
+        <div className="flex items-center gap-x-2.5 md:gap-x-[15px]">
+            <span
+                aria-hidden="true"
+                className="grid size-[46px] flex-none place-items-center rounded-xl bg-secondary text-primary md:size-[52px] md:rounded-[14px]"
+            >
+                <Icon
+                    className="size-[23px] md:size-[25px]"
+                    strokeWidth={1.6}
+                />
+            </span>
+            <div>
+                <strong className="block font-display text-[15px] font-bold md:text-[17px]">
+                    {value}
+                </strong>
+                <span className="mt-1 block text-xs text-muted-foreground md:mt-[5px]">
+                    {label}
+                </span>
+            </div>
+        </div>
+    );
+}
+
 export default function PropertyShow({ property }: { property: Property }) {
+    const operationNoun = property.operation === 'rent' ? 'alquiler' : 'venta';
+    const area = Number(property.area).toLocaleString('es-PE', {
+        maximumFractionDigits: 2,
+    });
+
     return (
         <>
             <Head title={property.title} />
 
-            <Link
-                href={home()}
-                className="mb-6 inline-flex items-center gap-2 text-sm text-muted-foreground transition-colors hover:text-primary"
-            >
-                <ArrowLeft className="size-4" />
-                Volver al catálogo
-            </Link>
+            <PublicContainer className="pt-2 pb-12 md:pt-2.5 lg:pb-14">
+                <nav aria-label="Migas de pan" className="pb-[23px] md:pb-7">
+                    <Link
+                        href={home()}
+                        className="inline-flex items-center gap-[10px] text-xs font-semibold text-muted-foreground transition-colors hover:text-brand-primary"
+                    >
+                        <span aria-hidden="true">←</span>
+                        Volver a propiedades
+                    </Link>
+                </nav>
 
-            <div className="grid gap-8 lg:grid-cols-[1.4fr_1fr]">
-                <div className="space-y-4">
-                    <div className="aspect-[4/3] overflow-hidden rounded-xl bg-muted ">
-                        {property.cover_photo_url ? (
-                            <img
-                                src={property.cover_photo_url}
-                                alt={property.title}
-                                className="size-full object-cover"
+                <section className="vj-detail-enter mb-[22px] md:mb-7">
+                    <h1 className="font-display text-[clamp(1.875rem,3.2vw,2.875rem)] leading-[1.15] font-bold tracking-[-0.045em]">
+                        {property.title}
+                    </h1>
+                    <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-muted-foreground md:mt-3">
+                        <span>
+                            {property.zone}, {property.city}
+                        </span>
+                        <span
+                            aria-hidden="true"
+                            className="size-1 rounded-full bg-[#a8bbb4]"
+                        />
+                        <span className="font-bold text-brand-primary">
+                            {property.type_label} en {operationNoun}
+                        </span>
+                    </div>
+                </section>
+
+                <PropertyPhotoGallery
+                    photos={property.photos}
+                    title={property.title}
+                />
+
+                <div className="grid gap-8 pt-[30px] lg:grid-cols-[minmax(0,1fr)_390px] lg:items-start lg:gap-20 lg:pt-[50px]">
+                    <div className="min-w-0">
+                        <div className="vj-detail-enter grid grid-cols-2 gap-x-3 gap-y-5 border-b border-border pb-[22px] md:grid-cols-3 md:gap-6 md:pb-[30px]">
+                            <PropertyFeature
+                                icon={Maximize}
+                                value={`${area} m²`}
+                                label="Área total"
                             />
-                        ) : (
-                            <div className="flex size-full items-center justify-center text-muted-foreground">
-                                Sin foto
-                            </div>
-                        )}
+                            <PropertyFeature
+                                icon={BedDouble}
+                                value={String(property.bedrooms)}
+                                label={
+                                    property.bedrooms === 1
+                                        ? 'Dormitorio'
+                                        : 'Dormitorios'
+                                }
+                            />
+                            <PropertyFeature
+                                icon={Bath}
+                                value={String(property.bathrooms)}
+                                label={
+                                    property.bathrooms === 1 ? 'Baño' : 'Baños'
+                                }
+                            />
+                        </div>
+
+                        <section className="border-b border-border py-[30px] md:py-[38px]">
+                            <h2 className="font-display text-[25px] font-bold tracking-[-0.03em]">
+                                Descripción
+                            </h2>
+                            <p className="mt-[18px] max-w-[720px] text-[15px] leading-[1.9] whitespace-pre-line text-muted-foreground">
+                                {property.description}
+                            </p>
+                        </section>
+
+                        <section className="border-b border-border py-[30px] md:py-[38px]">
+                            <h2 className="font-display text-[25px] font-bold tracking-[-0.03em]">
+                                Ubicación
+                            </h2>
+                            <p className="mt-[18px] max-w-[720px] text-[15px] leading-[1.9] text-muted-foreground">
+                                {property.zone}, {property.city}
+                            </p>
+                        </section>
                     </div>
 
-                    {property.photos.length > 1 && (
-                        <div className="grid grid-cols-3 gap-3">
-                            {property.photos.slice(1).map((photo) => (
-                                <div
-                                    key={photo.position}
-                                    className="aspect-[4/3] overflow-hidden rounded-lg bg-muted "
-                                >
-                                    <img
-                                        src={photo.url}
-                                        alt={`${property.title} — foto ${photo.position}`}
-                                        className="size-full object-cover"
-                                        loading="lazy"
-                                    />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                </div>
-
-                <div className="space-y-6">
-                    <div>
-                        <div className="flex flex-wrap gap-2 text-xs font-medium">
-                            <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                                {property.operation_label}
-                            </span>
-                            <span className="rounded-full bg-secondary px-2.5 py-1 text-secondary-foreground">
-                                {property.type_label}
-                            </span>
-                        </div>
-                        <h1 className="mt-3 text-2xl font-semibold tracking-tight">
-                            {property.title}
-                        </h1>
-                        <p className="mt-2 flex items-center gap-1 text-sm text-muted-foreground">
-                            <MapPin className="size-4" />
-                            {property.city} · {property.zone}
+                    <aside
+                        id="consulta"
+                        className="scroll-mt-6 rounded-xl border border-border bg-card p-7 shadow-[0_12px_35px_rgba(25,47,48,0.035)] lg:sticky lg:top-5"
+                    >
+                        <p className="text-xs text-muted-foreground">
+                            Precio de {operationNoun}
                         </p>
-                    </div>
-
-                    <p className="text-3xl font-semibold">
-                        {property.price_formatted}
-                    </p>
-
-                    <div className="grid grid-cols-3 gap-4 rounded-xl border border-border p-4 text-sm ">
-                        <div className="flex items-center gap-2">
-                            <BedDouble className="size-4" />
-                            {property.bedrooms} dorm.
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Bath className="size-4" />
-                            {property.bathrooms} baños
-                        </div>
-                        <div className="flex items-center gap-2">
-                            <Maximize className="size-4" />
-                            {property.area} m²
-                        </div>
-                    </div>
-
-                    <div>
-                        <h2 className="font-semibold">Descripción</h2>
-                        <p className="mt-2 text-sm leading-6 whitespace-pre-line text-muted-foreground">
-                            {property.description}
+                        <p className="mt-2 font-display text-[27px] leading-none font-bold">
+                            {property.price_formatted}
                         </p>
-                    </div>
-                </div>
-            </div>
 
-            <section className="mt-12 border-t border-border pt-8 ">
-                <div className="grid gap-8 lg:grid-cols-[1fr_1.4fr]">
-                    <div>
-                        <h2 className="text-xl font-semibold tracking-tight">
-                            Consulta esta propiedad
+                        <hr className="my-[22px] border-t border-border" />
+
+                        <h2 className="font-display text-[22px] font-bold tracking-[-0.03em]">
+                            ¿Te interesa esta propiedad?
                         </h2>
-                        <p className="mt-2 text-sm leading-6 text-muted-foreground">
-                            Déjanos tus datos y la inmobiliaria se pondrá en
+                        <p className="mt-2 mb-5 text-xs leading-[1.6] text-muted-foreground">
+                            Cuéntanos un poco sobre ti y nos pondremos en
                             contacto contigo.
                         </p>
-                    </div>
 
-                    <div className="rounded-xl border border-border bg-card p-6 ">
                         <Form
                             {...store.form(property.id)}
-                            className="space-y-4"
                             options={{ preserveScroll: true }}
                             resetOnSuccess
                             noValidate
                         >
                             {({ processing, errors }) => (
-                                <>
-                                    <div className="grid gap-4 sm:grid-cols-2">
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="inquiry-name">
-                                                Nombre
-                                            </Label>
-                                            <Input
-                                                id="inquiry-name"
-                                                name="name"
-                                                maxLength={255}
-                                                autoComplete="name"
-                                            />
-                                            <InputError message={errors.name} />
-                                        </div>
-
-                                        <div className="grid gap-2">
-                                            <Label htmlFor="inquiry-email">
-                                                Email
-                                            </Label>
-                                            <Input
-                                                id="inquiry-email"
-                                                name="email"
-                                                type="email"
-                                                maxLength={255}
-                                                autoComplete="email"
-                                            />
-                                            <InputError
-                                                message={errors.email}
-                                            />
-                                        </div>
+                                <div className="space-y-3.5">
+                                    <div>
+                                        <Label
+                                            htmlFor="inquiry-name"
+                                            className="mb-[7px] block text-xs font-semibold text-foreground"
+                                        >
+                                            Nombre completo
+                                        </Label>
+                                        <Input
+                                            id="inquiry-name"
+                                            name="name"
+                                            maxLength={255}
+                                            autoComplete="name"
+                                            placeholder="Tu nombre"
+                                            className={fieldClassName}
+                                        />
+                                        <InputError
+                                            message={errors.name}
+                                            className="mt-1.5 text-xs"
+                                        />
                                     </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="inquiry-phone">
+                                    <div>
+                                        <Label
+                                            htmlFor="inquiry-email"
+                                            className="mb-[7px] block text-xs font-semibold text-foreground"
+                                        >
+                                            Correo electrónico
+                                        </Label>
+                                        <Input
+                                            id="inquiry-email"
+                                            name="email"
+                                            type="email"
+                                            maxLength={255}
+                                            autoComplete="email"
+                                            placeholder="tu@correo.com"
+                                            className={fieldClassName}
+                                        />
+                                        <InputError
+                                            message={errors.email}
+                                            className="mt-1.5 text-xs"
+                                        />
+                                    </div>
+
+                                    <div>
+                                        <Label
+                                            htmlFor="inquiry-phone"
+                                            className="mb-[7px] block text-xs font-semibold text-foreground"
+                                        >
                                             Teléfono{' '}
                                             <span className="font-normal text-muted-foreground">
                                                 (opcional)
@@ -191,33 +243,82 @@ export default function PropertyShow({ property }: { property: Property }) {
                                             type="tel"
                                             maxLength={20}
                                             autoComplete="tel"
+                                            placeholder="Tu número de contacto"
+                                            className={fieldClassName}
                                         />
-                                        <InputError message={errors.phone} />
+                                        <InputError
+                                            message={errors.phone}
+                                            className="mt-1.5 text-xs"
+                                        />
                                     </div>
 
-                                    <div className="grid gap-2">
-                                        <Label htmlFor="inquiry-message">
+                                    <div>
+                                        <Label
+                                            htmlFor="inquiry-message"
+                                            className="mb-[7px] block text-xs font-semibold text-foreground"
+                                        >
                                             Mensaje
                                         </Label>
                                         <Textarea
                                             id="inquiry-message"
                                             name="message"
-                                            rows={4}
-                                            placeholder="Cuéntanos qué te interesa de la propiedad."
+                                            rows={3}
+                                            defaultValue={defaultMessage}
+                                            className={cn(
+                                                fieldClassName,
+                                                'min-h-[80px] resize-y',
+                                            )}
                                         />
-                                        <InputError message={errors.message} />
+                                        <InputError
+                                            message={errors.message}
+                                            className="mt-1.5 text-xs"
+                                        />
                                     </div>
 
-                                    <Button type="submit" disabled={processing}>
-                                        {processing && <Spinner />}
-                                        Enviar consulta
-                                    </Button>
-                                </>
+                                    <button
+                                        type="submit"
+                                        disabled={processing}
+                                        aria-busy={processing}
+                                        className="mt-[18px] flex w-full items-center justify-between gap-4 rounded-[8px] bg-primary px-4.5 py-[15px] text-left text-[13px] font-bold text-primary-foreground transition-colors duration-200 hover:bg-brand-primary-hover disabled:cursor-not-allowed disabled:opacity-80 motion-reduce:transition-none"
+                                    >
+                                        <span>
+                                            {processing
+                                                ? 'Enviando consulta…'
+                                                : 'Enviar consulta'}
+                                        </span>
+                                        <span
+                                            aria-hidden="true"
+                                            className="text-base"
+                                        >
+                                            ↗
+                                        </span>
+                                    </button>
+
+                                    <p className="text-[11px] leading-[1.6] text-[#718984] dark:text-muted-foreground">
+                                        Usaremos tus datos solo para contactarte
+                                        por esta propiedad.
+                                    </p>
+                                </div>
                             )}
                         </Form>
-                    </div>
+                    </aside>
                 </div>
-            </section>
+            </PublicContainer>
+
+            <div className="sticky bottom-0 z-30 flex items-center justify-between gap-4 border-t border-border bg-card px-5 py-3 shadow-[0_-6px_24px_rgba(25,47,48,0.07)] lg:hidden">
+                <strong className="font-display text-[17px] font-bold">
+                    {property.price_formatted}
+                </strong>
+                <a
+                    href="#consulta"
+                    className="rounded-[7px] bg-primary px-4 py-[13px] text-xs font-bold text-primary-foreground transition-colors duration-200 hover:bg-brand-primary-hover"
+                >
+                    Consultar propiedad
+                    <span aria-hidden="true" className="pl-1">
+                        ↗
+                    </span>
+                </a>
+            </div>
         </>
     );
 }
