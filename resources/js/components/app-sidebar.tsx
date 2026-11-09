@@ -1,25 +1,16 @@
 import { Link, usePage } from '@inertiajs/react';
-import {
-    Archive,
-    BookOpen,
-    Building2,
-    FolderGit2,
-    LayoutGrid,
-    MessageSquare,
-    UserPlus,
-} from 'lucide-react';
+import { Archive, House, Inbox, LayoutGrid, Users } from 'lucide-react';
 import AppLogo from '@/components/app-logo';
-import { NavFooter } from '@/components/nav-footer';
 import { NavMain } from '@/components/nav-main';
 import { NavUser } from '@/components/nav-user';
+import { SidebarContextNote } from '@/components/sidebar-context-note';
+import { SidebarWorkspace } from '@/components/sidebar-workspace';
 import {
     Sidebar,
     SidebarContent,
     SidebarFooter,
     SidebarHeader,
-    SidebarMenu,
-    SidebarMenuButton,
-    SidebarMenuItem,
+    SidebarRail,
 } from '@/components/ui/sidebar';
 import { index as inquiriesIndex } from '@/actions/App/Http/Controllers/PropertyInquiryController';
 import { dashboard } from '@/routes';
@@ -30,32 +21,20 @@ import {
 } from '@/actions/App/Http/Controllers/PropertyController';
 import type { NavItem } from '@/types';
 
-const footerNavItems: NavItem[] = [
-    {
-        title: 'Repository',
-        href: 'https://github.com/laravel/react-starter-kit',
-        icon: FolderGit2,
-    },
-    {
-        title: 'Documentation',
-        href: 'https://laravel.com/docs/starter-kits#react',
-        icon: BookOpen,
-    },
-];
-
 export function AppSidebar() {
-    const { auth } = usePage().props;
+    const { auth, nav } = usePage().props;
+    const isAdmin = auth.user.role === 'admin';
 
-    const mainNavItems: NavItem[] = [
+    const managementNavItems: NavItem[] = [
         {
-            title: 'Dashboard',
+            title: 'Resumen',
             href: dashboard(),
             icon: LayoutGrid,
         },
         {
             title: 'Propiedades',
             href: panelIndex(),
-            icon: Building2,
+            icon: House,
         },
         {
             title: 'Archivadas',
@@ -65,41 +44,50 @@ export function AppSidebar() {
         {
             title: 'Consultas',
             href: inquiriesIndex(),
-            icon: MessageSquare,
+            icon: Inbox,
+            badge: nav.inquiryCount,
         },
-        ...(auth.user.role === 'admin'
-            ? [
-                  {
-                      title: 'Crear agente',
-                      href: createAgent(),
-                      icon: UserPlus,
-                  },
-              ]
-            : []),
+    ];
+
+    const adminNavItems: NavItem[] = [
+        {
+            title: 'Crear agente',
+            href: createAgent(),
+            icon: Users,
+        },
     ];
 
     return (
-        <Sidebar collapsible="icon" variant="inset">
-            <SidebarHeader>
-                <SidebarMenu>
-                    <SidebarMenuItem>
-                        <SidebarMenuButton size="lg" asChild>
-                            <Link href={dashboard()} prefetch>
-                                <AppLogo />
-                            </Link>
-                        </SidebarMenuButton>
-                    </SidebarMenuItem>
-                </SidebarMenu>
+        <Sidebar collapsible="icon" variant="sidebar">
+            <SidebarHeader className="gap-0 p-0 px-4 pt-[29px] group-data-[collapsible=icon]:px-2">
+                <Link
+                    href={dashboard()}
+                    prefetch
+                    className="flex items-center gap-[9px] rounded-lg px-2 ring-sidebar-ring outline-hidden group-data-[collapsible=icon]:justify-center group-data-[collapsible=icon]:px-0 focus-visible:ring-2"
+                >
+                    <AppLogo />
+                </Link>
+                <SidebarWorkspace isAdmin={isAdmin} />
             </SidebarHeader>
 
-            <SidebarContent>
-                <NavMain items={mainNavItems} />
+            <SidebarContent className="gap-0">
+                <NavMain label="Gestión" items={managementNavItems} />
+                {isAdmin && (
+                    <NavMain
+                        label="Administración"
+                        items={adminNavItems}
+                        className="mt-[31px]"
+                    />
+                )}
             </SidebarContent>
 
-            <SidebarFooter>
-                <NavFooter items={footerNavItems} className="mt-auto" />
-                <NavUser />
+            <SidebarFooter className="gap-0 p-0 px-4 pb-0 group-data-[collapsible=icon]:px-2">
+                <SidebarContextNote />
+                <div className="border-t border-sidebar-border">
+                    <NavUser />
+                </div>
             </SidebarFooter>
+            <SidebarRail />
         </Sidebar>
     );
 }
