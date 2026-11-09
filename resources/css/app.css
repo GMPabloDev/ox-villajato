@@ -10,3 +10,84 @@
         @apply border-border;
     }
 }
+
+@keyframes vj-enter-up {
+    from {
+        opacity: 0;
+        transform: translateY(10px);
+    }
+
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@keyframes vj-enter-image {
+    from {
+        opacity: 0.75;
+        transform: scale(1.015);
+    }
+
+    to {
+        opacity: 1;
+        transform: scale(1);
+    }
+}
+
+@keyframes vj-menu-fade {
+    from {
+        opacity: 0;
+    }
+
+    to {
+        opacity: 1;
+    }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    html {
+        scroll-behavior: smooth;
+    }
+
+    .vj-hero-enter > * {
+        animation: vj-enter-up 1s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .vj-hero-enter > h1 {
+        animation-delay: 0.1s;
+    }
+
+    .vj-hero-enter > .vj-hero-lead {
+        animation-delay: 0.2s;
+    }
+
+    .vj-hero-enter > .vj-hero-actions {
+        animation-delay: 0.3s;
+    }
+
+    .vj-hero-enter > .vj-hero-foot {
+        animation-delay: 0.4s;
+    }
+
+    .vj-hero-image {
+        animation: vj-enter-image 1.4s cubic-bezier(0.22, 1, 0.36, 1) both;
+    }
+
+    .vj-menu-fade {
+        animation: vj-menu-fade 0.18s ease-out both;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    html {
+        scroll-behavior: auto;
+    }
+
+    *,
+    *::before,
+    *::after {
+        animation: none !important;
+        transition: none !important;
+    }
+}
