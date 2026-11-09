@@ -1,0 +1,6 @@
+# Configuración del flujo de trabajo de specs
+#
+# AutoCreateBranch — controla si /skill:ox-spec-impl crea automáticamente la rama de git.
+#   true  (predeterminado) → /skill:ox-spec-impl crea la rama spec-NN-slug y cambia a ella sin preguntar
+#   false                 → /skill:ox-spec-impl pide confirmación [y/N] antes de crear la rama
+AutoCreateBranch: true
