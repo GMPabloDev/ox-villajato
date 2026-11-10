@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\SearchesFoldedText;
 use Database\Factories\PropertyInquiryFactory;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Scope;
@@ -31,6 +32,15 @@ class PropertyInquiry extends Model
     /** @use HasFactory<PropertyInquiryFactory> */
     use HasFactory;
 
+    use SearchesFoldedText;
+
+    /**
+     * Columns searched by the panel search box.
+     *
+     * @var list<literal-string>
+     */
+    private const SEARCHABLE_COLUMNS = ['name', 'email', 'property_title', 'message'];
+
     /**
      * @return BelongsTo<Property, $this>
      */
@@ -59,5 +69,20 @@ class PropertyInquiry extends Model
         return $user->isAdmin()
             ? $query
             : $query->where('publisher_id', $user->id);
+    }
+
+    /**
+     * Match the term in the visitor name, email, property title or message,
+     * ignoring case and accents.
+     *
+     * @param  Builder<static>  $query
+     * @return Builder<static>
+     */
+    #[Scope]
+    protected function search(Builder $query, string $term): Builder
+    {
+        self::addFoldedSearch($query, self::SEARCHABLE_COLUMNS, $term);
+
+        return $query;
     }
 }
