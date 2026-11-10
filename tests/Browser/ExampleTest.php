@@ -28,13 +28,13 @@ class ExampleTest extends DuskTestCase
         $this->browse(function (Browser $browser) use ($property, $url): void {
             $browser->visit('/')
                 ->waitForText($property->title)
-                ->assertSee('Casas y departamentos en venta y alquiler.')
+                ->assertSee('Conoce algunas de nuestras propiedades en venta y alquiler.')
                 ->assertSee('Lima · Miraflores')
                 ->assertSee('S/ 250,000')
                 ->click('a[href="'.$url.'"]')
                 ->waitForLocation(parse_url($url, PHP_URL_PATH))
                 ->assertSee($property->title)
-                ->assertSee('Consulta esta propiedad');
+                ->assertSee('Enviar consulta');
         });
     }
 }
