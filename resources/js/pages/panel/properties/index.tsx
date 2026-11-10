@@ -1,6 +1,6 @@
-import { Head, useForm } from '@inertiajs/react';
-import { Building2, Plus, X } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, router, useForm } from '@inertiajs/react';
+import { Building2, Plus, SearchX, X } from 'lucide-react';
+import { useEffect, useState } from 'react';
 import {
     archive,
     close,
@@ -8,7 +8,10 @@ import {
     reopen,
 } from '@/actions/App/Http/Controllers/PropertyController';
 import { PanelPropertyDetail } from '@/components/panel-property-detail';
-import { PanelPropertyFilters } from '@/components/panel-property-filters';
+import {
+    PanelPropertyFilters,
+    type PanelPropertyCounts,
+} from '@/components/panel-property-filters';
 import {
     PanelPropertyListItem,
     type PanelPropertyListItemData,
@@ -36,10 +39,17 @@ import {
 } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
 import {
+    hasActivePanelFilters,
+    panelFiltersToQuery,
+    type PanelPropertyFiltersValue,
+    type PanelPropertyZonesByCity,
+} from '@/lib/panel-property-filters';
+import {
     type PropertyCurrencyValue,
     type PropertyOperationValue,
     type PropertyTypeValue,
 } from '@/lib/property-options';
+import { cn } from '@/lib/utils';
 
 type PendingAction = 'archive' | 'close' | 'reopen';
 
@@ -73,17 +83,44 @@ type PendingConfirmation = {
 
 type OpenSheet = { mode: 'create' } | { mode: 'edit'; property: PanelProperty };
 
-function compareText(first: string, second: string): number {
-    return first.localeCompare(second, 'es', { sensitivity: 'base' });
+type PaginationLink = {
+    active: boolean;
+    label: string;
+    url: string | null;
+};
+
+type PaginatedPanelProperties = {
+    data: PanelProperty[];
+    current_page: number;
+    last_page: number;
+    links: PaginationLink[];
+    total: number;
+    from: number | null;
+    to: number | null;
+};
+
+function pluralize(count: number, singular: string, plural: string): string {
+    return `${count} ${count === 1 ? singular : plural}`;
 }
 
 export default function PanelPropertiesIndex({
     properties,
+    filters,
+    counts,
+    cities,
+    zonesByCity,
+    filterErrors,
 }: {
-    properties: PanelProperty[];
+    properties: PaginatedPanelProperties;
+    filters: PanelPropertyFiltersValue;
+    counts: PanelPropertyCounts;
+    cities: string[];
+    zonesByCity: PanelPropertyZonesByCity;
+    filterErrors?: { price?: string };
 }) {
+    const propertyList = properties.data;
     const [selectedId, setSelectedId] = useState<number | null>(
-        properties[0]?.id ?? null,
+        propertyList[0]?.id ?? null,
     );
     const [isDetailOpen, setIsDetailOpen] = useState(false);
     const [pendingConfirmation, setPendingConfirmation] =
@@ -91,30 +128,46 @@ export default function PanelPropertiesIndex({
     const [openSheet, setOpenSheet] = useState<OpenSheet | null>(null);
     const [isSheetOpen, setIsSheetOpen] = useState(false);
     const [sheetKey, setSheetKey] = useState(0);
+    const [filtersKey, setFiltersKey] = useState(0);
     const { submit, processing } = useForm({});
 
     const selectedProperty =
-        properties.find((property) => property.id === selectedId) ??
-        properties[0] ??
+        propertyList.find((property) => property.id === selectedId) ??
+        propertyList[0] ??
         null;
 
-    const counts = {
-        all: properties.length,
-        available: properties.filter(
-            (property) => property.status === 'available',
-        ).length,
-        sold: properties.filter((property) => property.status === 'sold')
-            .length,
-        rented: properties.filter((property) => property.status === 'rented')
-            .length,
-    };
+    useEffect(() => {
+        setSelectedId(selectedProperty?.id ?? null);
+    }, [selectedProperty?.id]);
 
-    const cities = [
-        ...new Set(properties.map((property) => property.city)),
-    ].sort(compareText);
-    const zones = [
-        ...new Set(properties.map((property) => property.zone)),
-    ].sort(compareText);
+    const hasActiveFilters = hasActivePanelFilters(filters);
+    const hasResults = propertyList.length > 0;
+    const isInventoryEmpty = counts.all === 0 && !hasActiveFilters;
+    const resultsLabel = hasActiveFilters
+        ? pluralize(properties.total, 'coincidencia', 'coincidencias')
+        : `${pluralize(properties.total, 'propiedad', 'propiedades')} en tu inventario`;
+    const footerLabel = hasResults
+        ? `Mostrando ${properties.from ?? 0} a ${properties.to ?? 0} de ${pluralize(properties.total, 'propiedad', 'propiedades')}`
+        : 'Sin propiedades para mostrar';
+
+    function applyFilters(next: PanelPropertyFiltersValue) {
+        router.get(panelIndex.url(), panelFiltersToQuery(next), {
+            preserveScroll: true,
+            preserveState: true,
+        });
+    }
+
+    function clearFilters() {
+        setFiltersKey((key) => key + 1);
+        router.get(
+            panelIndex.url(),
+            {},
+            {
+                preserveScroll: true,
+                preserveState: true,
+            },
+        );
+    }
 
     function selectProperty(property: PanelPropertyListItemData) {
         setSelectedId(property.id);
@@ -186,10 +239,6 @@ export default function PanelPropertiesIndex({
 
     const pendingProperty = pendingConfirmation?.property;
     const pendingAction = pendingConfirmation?.action;
-    const hasProperties = properties.length > 0;
-    const resultsLabel = `${counts.all} ${
-        counts.all === 1 ? 'propiedad' : 'propiedades'
-    } en tu inventario`;
 
     return (
         <>
@@ -227,9 +276,13 @@ export default function PanelPropertiesIndex({
                     className="overflow-hidden rounded-[17px] border border-border bg-card shadow-sm"
                 >
                     <PanelPropertyFilters
+                        key={filtersKey}
+                        filters={filters}
                         counts={counts}
                         cities={cities}
-                        zones={zones}
+                        zonesByCity={zonesByCity}
+                        priceRangeError={filterErrors?.price ?? null}
+                        onApply={applyFilters}
                     />
 
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-4 py-3 text-xs md:px-6">
@@ -238,20 +291,20 @@ export default function PanelPropertiesIndex({
                                 {resultsLabel}
                             </strong>
                         </p>
-                        {selectedProperty !== null && (
+                        {hasResults && (
                             <span className="hidden text-[11px] text-muted-foreground sm:inline">
                                 Elige un inmueble para abrir su vista previa
                             </span>
                         )}
                     </div>
 
-                    {hasProperties ? (
+                    {hasResults ? (
                         <div className="grid lg:grid-cols-[minmax(0,1fr)_minmax(0,0.92fr)]">
                             <ul
                                 aria-label="Propiedades"
                                 className="min-w-0 lg:border-r lg:border-border [&>li:last-child>button]:border-b-0"
                             >
-                                {properties.map((property) => (
+                                {propertyList.map((property) => (
                                     <PanelPropertyListItem
                                         key={property.id}
                                         property={property}
@@ -274,7 +327,7 @@ export default function PanelPropertiesIndex({
                                 </section>
                             )}
                         </div>
-                    ) : (
+                    ) : isInventoryEmpty ? (
                         <div className="flex flex-col items-center justify-center px-6 py-16 text-center md:py-20">
                             <span className="grid size-14 place-items-center rounded-2xl bg-muted text-primary">
                                 <Building2
@@ -298,13 +351,83 @@ export default function PanelPropertiesIndex({
                                 Publicar propiedad
                             </Button>
                         </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center px-6 py-16 text-center md:py-20">
+                            <span className="grid size-14 place-items-center rounded-2xl bg-muted text-primary">
+                                <SearchX
+                                    className="size-6"
+                                    aria-hidden="true"
+                                />
+                            </span>
+                            <h2 className="mt-5 font-display text-[19px] font-extrabold tracking-[-0.5px]">
+                                No hay propiedades que coincidan
+                            </h2>
+                            <p className="mt-2 max-w-sm text-xs leading-[1.8] text-muted-foreground">
+                                Prueba con otros criterios o limpia la búsqueda
+                                y los filtros para volver a ver todo tu
+                                inventario.
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={clearFilters}
+                                className="mt-6 h-10 gap-2 rounded-[10px] border-input px-4 text-xs font-semibold"
+                            >
+                                Limpiar búsqueda y filtros
+                            </Button>
+                        </div>
                     )}
 
-                    <footer className="flex flex-col gap-1 border-t border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground md:flex-row md:items-center md:justify-between md:px-6">
-                        <span>
-                            Mostrando {counts.all}{' '}
-                            {counts.all === 1 ? 'propiedad' : 'propiedades'}
-                        </span>
+                    <footer className="flex flex-col gap-3 border-t border-border bg-muted/30 px-4 py-3 text-[11px] text-muted-foreground md:flex-row md:items-center md:justify-between md:px-6">
+                        <span>{footerLabel}</span>
+
+                        {properties.last_page > 1 && (
+                            <nav
+                                aria-label="Paginación de propiedades"
+                                className="flex flex-wrap items-center gap-1.5"
+                            >
+                                {properties.links.map((link, index) => {
+                                    const label =
+                                        index === 0
+                                            ? 'Anterior'
+                                            : index ===
+                                                properties.links.length - 1
+                                              ? 'Siguiente'
+                                              : link.label;
+
+                                    if (link.url === null) {
+                                        return (
+                                            <span
+                                                key={index}
+                                                aria-disabled="true"
+                                                className="grid min-h-7 min-w-7 cursor-not-allowed place-items-center rounded-[6px] border border-border bg-card px-2 text-[10px] text-muted-foreground/50"
+                                            >
+                                                {label}
+                                            </span>
+                                        );
+                                    }
+
+                                    return (
+                                        <Link
+                                            key={index}
+                                            href={link.url}
+                                            aria-current={
+                                                link.active ? 'page' : undefined
+                                            }
+                                            className={cn(
+                                                'grid min-h-7 min-w-7 place-items-center rounded-[6px] border px-2 text-[10px] transition-colors',
+                                                link.active
+                                                    ? 'border-primary bg-secondary font-semibold text-secondary-foreground'
+                                                    : 'border-border bg-card text-muted-foreground hover:bg-muted hover:text-foreground',
+                                            )}
+                                        >
+                                            {label}
+                                        </Link>
+                                    );
+                                })}
+                            </nav>
+                        )}
+
                         <span>
                             Precios en su moneda original. Sin conversión.
                         </span>
