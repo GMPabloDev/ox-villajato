@@ -1,6 +1,6 @@
 # SPEC 15 — Filtrar consultas del panel
 
-> **Estado:** Implementada
+> **Estado:** Aprobada
 > **Depende de:** SPEC 08, SPEC 09, SPEC 12, SPEC 13
 > **Fecha:** 2026-11-10
 > **Objetivo:** Hacer funcionales la búsqueda, el filtro por propiedad y el orden del panel de consultas.
