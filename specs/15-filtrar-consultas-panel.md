@@ -1,6 +1,6 @@
 # SPEC 15 — Filtrar consultas del panel
 
-> **Estado:** Aprobada
+> **Estado:** Implementada
 > **Depende de:** SPEC 08, SPEC 09, SPEC 12, SPEC 13
 > **Fecha:** 2026-11-10
 > **Objetivo:** Hacer funcionales la búsqueda, el filtro por propiedad y el orden del panel de consultas.
@@ -41,18 +41,18 @@
 
 ## Criterios de aceptación
 
-- [ ] La búsqueda encuentra coincidencias en nombre, correo, título de propiedad y mensaje sin distinguir mayúsculas ni tildes. No busca por teléfono ni publicador.
-- [ ] El selector muestra las propiedades con consultas accesibles de todas las páginas, incluidas las eliminadas. Cada opción filtra una propiedad concreta, aunque otra tenga el mismo título; los títulos repetidos muestran su identificador.
-- [ ] Al combinar búsqueda y propiedad, cada consulta mostrada cumple ambas condiciones.
-- [ ] El orden permite mostrar primero las consultas más recientes o las más antiguas según su fecha de recepción.
-- [ ] El selector y el orden se aplican al cambiar. La búsqueda se aplica tras una breve pausa al escribir. La tecla `/` enfoca la búsqueda cuando no se escribe en otro campo.
-- [ ] Al cambiar la búsqueda, la propiedad o el orden, el listado vuelve a la primera página. Cada página muestra como máximo 15 consultas.
-- [ ] Al recargar o abrir una URL filtrada se conservan la búsqueda, la propiedad, el orden y la página. Los enlaces de paginación conservan los parámetros.
-- [ ] El administrador recibe todas las consultas accesibles; el agente recibe solo las que le corresponden. Los resultados, el total y las opciones del selector no revelan consultas ni propiedades de otros agentes.
-- [ ] El encabezado y el menú muestran el total de consultas accesibles sin limitarlo por filtros. El listado muestra el número de coincidencias filtradas.
-- [ ] Si hay consultas accesibles pero ninguna coincide, el panel muestra un estado sin coincidencias y permite limpiar la búsqueda y el filtro. Si no hay consultas accesibles, muestra el estado vacío correspondiente al rol.
-- [ ] Si la consulta seleccionada deja de aparecer en la página visible, el detalle muestra la primera consulta visible. Si no hay resultados, no muestra ningún detalle.
-- [ ] Las consultas de propiedades vendidas, alquiladas, archivadas o eliminadas siguen disponibles según los permisos existentes.
+- [x] La búsqueda encuentra coincidencias en nombre, correo, título de propiedad y mensaje sin distinguir mayúsculas ni tildes. No busca por teléfono ni publicador.
+- [x] El selector muestra las propiedades con consultas accesibles de todas las páginas, incluidas las eliminadas. Cada opción filtra una propiedad concreta, aunque otra tenga el mismo título; los títulos repetidos muestran su identificador.
+- [x] Al combinar búsqueda y propiedad, cada consulta mostrada cumple ambas condiciones.
+- [x] El orden permite mostrar primero las consultas más recientes o las más antiguas según su fecha de recepción.
+- [x] El selector y el orden se aplican al cambiar. La búsqueda se aplica tras una breve pausa al escribir. La tecla `/` enfoca la búsqueda cuando no se escribe en otro campo.
+- [x] Al cambiar la búsqueda, la propiedad o el orden, el listado vuelve a la primera página. Cada página muestra como máximo 15 consultas.
+- [x] Al recargar o abrir una URL filtrada se conservan la búsqueda, la propiedad, el orden y la página. Los enlaces de paginación conservan los parámetros.
+- [x] El administrador recibe todas las consultas accesibles; el agente recibe solo las que le corresponden. Los resultados, el total y las opciones del selector no revelan consultas ni propiedades de otros agentes.
+- [x] El encabezado y el menú muestran el total de consultas accesibles sin limitarlo por filtros. El listado muestra el número de coincidencias filtradas.
+- [x] Si hay consultas accesibles pero ninguna coincide, el panel muestra un estado sin coincidencias y permite limpiar la búsqueda y el filtro. Si no hay consultas accesibles, muestra el estado vacío correspondiente al rol.
+- [x] Si la consulta seleccionada deja de aparecer en la página visible, el detalle muestra la primera consulta visible. Si no hay resultados, no muestra ningún detalle.
+- [x] Las consultas de propiedades vendidas, alquiladas, archivadas o eliminadas siguen disponibles según los permisos existentes.
 
 ## Decisiones
 
@@ -63,3 +63,4 @@
 - **Sí:** aplicar los cambios al interactuar y conservarlos en la URL. La búsqueda espera una breve pausa para no ejecutar una navegación por cada pulsación.
 - **Sí:** mantener el total accesible separado del número de coincidencias. Un filtro sin resultados no implica que no existan consultas.
 - **Sí:** activar el atajo `/` que ya anuncia el panel, sin interferir al escribir en otro campo.
+- **Sí:** si la página pedida excede la última, redirigir a la última página válida conservando la búsqueda, la propiedad y el orden. Así no se muestra el estado sin coincidencias cuando sí las hay.
