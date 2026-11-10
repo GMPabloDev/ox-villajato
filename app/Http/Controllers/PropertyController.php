@@ -5,17 +5,20 @@ namespace App\Http\Controllers;
 use App\Enums\PropertyOperation;
 use App\Enums\PropertyStatus;
 use App\Enums\PropertyType;
+use App\Http\Requests\PanelPropertyIndexRequest;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
 use App\Http\Resources\PropertyResource;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
+use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -80,13 +83,12 @@ class PropertyController extends Controller
             ->latest('id')
             ->get();
 
-        $zones = Property::query()
-            ->available()
-            ->distinct()
-            ->pluck('zone')
-            ->sortBy(fn (string $zone): string => Str::lower(Str::ascii($zone)))
-            ->values()
-            ->all();
+        $zones = $this->sortLocations(
+            Property::query()
+                ->available()
+                ->distinct()
+                ->pluck('zone'),
+        );
 
         return Inertia::render('properties/index', [
             'properties' => $properties
@@ -101,37 +103,184 @@ class PropertyController extends Controller
         ]);
     }
 
-    public function panelIndex(Request $request): Response
+    public function panelIndex(PanelPropertyIndexRequest $request): Response|RedirectResponse
     {
+        /** @var User $user */
         $user = $request->user();
         $disk = (string) config('properties.photos_disk');
+        $filters = $request->filters();
 
-        $properties = Property::query()
-            ->where('status', '!=', PropertyStatus::Archived)
-            ->when(! $user->isAdmin(), fn (Builder $query): Builder => $query->whereBelongsTo($user))
-            ->with('photos')
-            ->latest('id')
+        $accessibleQuery = Property::query()->notArchived()->visibleTo($user);
+
+        $properties = $this->applyPanelSort(
+            $this->applyPanelFilters($accessibleQuery->clone(), $filters, includeStatus: true)->with('photos'),
+            $filters['sort'],
+        )
+            ->paginate(15)
+            ->withQueryString()
+            ->through(fn (Property $property): array => [
+                ...(new PropertyResource($property))->resolve(),
+                'photos' => $property->photos
+                    ->map(fn (PropertyPhoto $photo): array => [
+                        'id' => $photo->id,
+                        'url' => Storage::disk($disk)->url($photo->path),
+                        'position' => $photo->position,
+                    ])
+                    ->values()
+                    ->all(),
+                'status' => $property->status->value,
+                'status_label' => $property->status->label(),
+                'status_action' => $property->status->action(),
+                'status_action_label' => $property->status->actionLabel($property->operation),
+            ]);
+
+        if ($properties->currentPage() > $properties->lastPage()) {
+            return redirect()->route('panel.properties.index', [
+                ...$request->query(),
+                'page' => $properties->lastPage(),
+            ]);
+        }
+
+        $statusCounts = $this->applyPanelFilters($accessibleQuery->clone(), $filters, includeStatus: false)
+            ->toBase()
+            ->selectRaw('status, count(*) as aggregate')
+            ->groupBy('status')
+            ->pluck('aggregate', 'status');
+
+        $counts = [
+            'all' => 0,
+            'available' => (int) ($statusCounts[PropertyStatus::Available->value] ?? 0),
+            'sold' => (int) ($statusCounts[PropertyStatus::Sold->value] ?? 0),
+            'rented' => (int) ($statusCounts[PropertyStatus::Rented->value] ?? 0),
+        ];
+        $counts['all'] = $counts['available'] + $counts['sold'] + $counts['rented'];
+
+        $locations = $accessibleQuery->clone()
+            ->toBase()
+            ->select(['city', 'zone'])
+            ->distinct()
             ->get();
 
+        $zonesOf = fn (Collection $rows): array => $this->sortLocations(
+            $rows->pluck('zone')->map(fn (mixed $zone): string => (string) $zone)->unique(),
+        );
+
+        $zonesByCity = $locations
+            ->groupBy(fn (object $location): string => (string) $location->city)
+            ->map(fn (Collection $cityLocations): array => $zonesOf($cityLocations))
+            ->all();
+
+        $allZones = $zonesOf($locations);
+        $priceRangeError = $request->priceRangeError();
+
         return Inertia::render('panel/properties/index', [
-            'properties' => $properties
-                ->map(fn (Property $property): array => [
-                    ...(new PropertyResource($property))->resolve(),
-                    'photos' => $property->photos
-                        ->map(fn (PropertyPhoto $photo): array => [
-                            'id' => $photo->id,
-                            'url' => Storage::disk($disk)->url($photo->path),
-                            'position' => $photo->position,
-                        ])
-                        ->values()
-                        ->all(),
-                    'status' => $property->status->value,
-                    'status_label' => $property->status->label(),
-                    'status_action' => $property->status->action(),
-                    'status_action_label' => $property->status->actionLabel($property->operation),
-                ])
-                ->all(),
+            'properties' => $properties,
+            'filters' => $filters,
+            'counts' => $counts,
+            'cities' => $this->sortLocations(
+                $locations->pluck('city')->map(fn (mixed $city): string => (string) $city)->unique(),
+            ),
+            'zones' => $filters['city'] === null
+                ? $allZones
+                : ($zonesByCity[$filters['city']] ?? []),
+            'zonesByCity' => $zonesByCity,
+            'filterErrors' => $priceRangeError === null ? [] : ['price' => $priceRangeError],
         ]);
+    }
+
+    /**
+     * Apply the panel filters to the query.
+     *
+     * @param  Builder<Property>  $query
+     * @param  array{
+     *     search: string|null,
+     *     status: string|null,
+     *     operation: string|null,
+     *     type: string|null,
+     *     city: string|null,
+     *     zone: string|null,
+     *     currency: string|null,
+     *     min_price: string|null,
+     *     max_price: string|null,
+     *     bedrooms: int|null,
+     *     sort: string
+     * }  $filters
+     * @return Builder<Property>
+     */
+    private function applyPanelFilters(Builder $query, array $filters, bool $includeStatus): Builder
+    {
+        if ($filters['search'] !== null) {
+            $query->search($filters['search']);
+        }
+
+        if ($includeStatus && $filters['status'] !== null) {
+            $query->where('status', $filters['status']);
+        }
+
+        if ($filters['operation'] !== null) {
+            $query->where('operation', $filters['operation']);
+        }
+
+        if ($filters['type'] !== null) {
+            $query->where('type', $filters['type']);
+        }
+
+        if ($filters['city'] !== null) {
+            $query->where('city', $filters['city']);
+        }
+
+        if ($filters['zone'] !== null) {
+            $query->where('zone', $filters['zone']);
+        }
+
+        if ($filters['currency'] !== null) {
+            $query->where('currency', $filters['currency']);
+        }
+
+        if ($filters['min_price'] !== null) {
+            $query->where('price', '>=', $filters['min_price']);
+        }
+
+        if ($filters['max_price'] !== null) {
+            $query->where('price', '<=', $filters['max_price']);
+        }
+
+        if ($filters['bedrooms'] !== null) {
+            $query->where('bedrooms', '>=', $filters['bedrooms']);
+        }
+
+        return $query;
+    }
+
+    /**
+     * Apply the panel ordering to the query.
+     *
+     * @param  Builder<Property>  $query
+     * @return Builder<Property>
+     */
+    private function applyPanelSort(Builder $query, string $sort): Builder
+    {
+        return match ($sort) {
+            'title' => $query->orderedByTitle(),
+            'price-asc' => $query->orderBy('price')->orderBy('id'),
+            'price-desc' => $query->orderByDesc('price')->orderBy('id'),
+            default => $query->latest('id'),
+        };
+    }
+
+    /**
+     * Sort location options ignoring case and accents.
+     *
+     * @param  Collection<int, string>  $locations
+     * @return list<string>
+     */
+    private function sortLocations(Collection $locations): array
+    {
+        return array_values(
+            $locations
+                ->sortBy(fn (string $location): string => Str::lower(Str::ascii($location)))
+                ->all(),
+        );
     }
 
     public function archivedIndex(Request $request): Response

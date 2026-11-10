@@ -46,8 +46,8 @@ class PropertyArchivingTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
-                ->has('properties', 1)
-                ->where('properties.0.id', $otherProperty->id)
+                ->has('properties.data', 1)
+                ->where('properties.data.0.id', $otherProperty->id)
             );
     }
 
@@ -385,9 +385,9 @@ class PropertyArchivingTest extends TestCase
         $this->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('properties', 1)
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.status', 'available')
+                ->has('properties.data', 1)
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.status', 'available')
             );
 
         $this->get(route('home'))

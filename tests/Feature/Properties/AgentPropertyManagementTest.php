@@ -95,17 +95,17 @@ class AgentPropertyManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
-                ->has('properties', 2)
-                ->where('properties.0.id', $closed->id)
-                ->where('properties.0.title', 'Casa vendida')
-                ->where('properties.0.status', 'sold')
-                ->where('properties.0.status_action', 'reopen')
-                ->where('properties.0.status_action_label', 'Volver a disponible')
-                ->where('properties.1.id', $available->id)
-                ->where('properties.1.title', 'Casa disponible')
-                ->where('properties.1.status', 'available')
-                ->where('properties.1.status_action', 'close')
-                ->where('properties.1.status_action_label', 'Marcar como vendida')
+                ->has('properties.data', 2)
+                ->where('properties.data.0.id', $closed->id)
+                ->where('properties.data.0.title', 'Casa vendida')
+                ->where('properties.data.0.status', 'sold')
+                ->where('properties.data.0.status_action', 'reopen')
+                ->where('properties.data.0.status_action_label', 'Volver a disponible')
+                ->where('properties.data.1.id', $available->id)
+                ->where('properties.data.1.title', 'Casa disponible')
+                ->where('properties.data.1.status', 'available')
+                ->where('properties.data.1.status_action', 'close')
+                ->where('properties.data.1.status_action_label', 'Marcar como vendida')
             );
     }
 
@@ -125,7 +125,7 @@ class AgentPropertyManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
-                ->has('properties', 0)
+                ->has('properties.data', 0)
             );
     }
 
@@ -153,14 +153,14 @@ class AgentPropertyManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.title', 'Casa frente al parque')
-                ->where('properties.0.price', '250000.00')
-                ->where('properties.0.currency', 'PEN')
-                ->where('properties.0.city', 'Lima')
-                ->where('properties.0.zone', 'Miraflores')
-                ->has('properties.0.photos', 1)
-                ->where('properties.0.photos.0.id', $photo->id)
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.title', 'Casa frente al parque')
+                ->where('properties.data.0.price', '250000.00')
+                ->where('properties.data.0.currency', 'PEN')
+                ->where('properties.data.0.city', 'Lima')
+                ->where('properties.data.0.zone', 'Miraflores')
+                ->has('properties.data.0.photos', 1)
+                ->where('properties.data.0.photos.0.id', $photo->id)
             );
 
         $response = $this->actingAs($agent)->put(route('panel.properties.update', $property), [
@@ -183,9 +183,9 @@ class AgentPropertyManagementTest extends TestCase
         $this->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('properties', 1)
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.title', 'Casa renovada')
+                ->has('properties.data', 1)
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.title', 'Casa renovada')
             );
 
         $this->get(route('properties.show', $property))
@@ -235,9 +235,9 @@ class AgentPropertyManagementTest extends TestCase
         $this->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('properties', 1)
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.status', $closedStatus)
+                ->has('properties.data', 1)
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.status', $closedStatus)
             );
 
         $this->get(route('properties.show', $property))->assertNotFound();
@@ -258,9 +258,9 @@ class AgentPropertyManagementTest extends TestCase
         $this->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->has('properties', 1)
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.status', 'available')
+                ->has('properties.data', 1)
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.status', 'available')
             );
 
         $this->get(route('properties.show', $property))->assertOk();
@@ -347,13 +347,13 @@ class AgentPropertyManagementTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->component('panel/properties/index')
-                ->has('properties', 2)
-                ->where('properties.0.id', $second->id)
-                ->where('properties.0.title', 'Casa de Beto')
-                ->where('properties.0.status', 'sold')
-                ->where('properties.1.id', $first->id)
-                ->where('properties.1.title', 'Casa de Ana')
-                ->where('properties.1.status', 'available')
+                ->has('properties.data', 2)
+                ->where('properties.data.0.id', $second->id)
+                ->where('properties.data.0.title', 'Casa de Beto')
+                ->where('properties.data.0.status', 'sold')
+                ->where('properties.data.1.id', $first->id)
+                ->where('properties.data.1.title', 'Casa de Ana')
+                ->where('properties.data.1.status', 'available')
             );
     }
 

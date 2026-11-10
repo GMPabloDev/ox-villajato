@@ -56,10 +56,10 @@ class PropertyStatusTest extends TestCase
         $this->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.status', $status)
-                ->where('properties.0.status_label', $statusLabel)
-                ->where('properties.0.status_action_label', 'Volver a disponible')
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.status', $status)
+                ->where('properties.data.0.status_label', $statusLabel)
+                ->where('properties.data.0.status_action_label', 'Volver a disponible')
             );
     }
 
@@ -144,10 +144,10 @@ class PropertyStatusTest extends TestCase
         $this->get(route('panel.properties.index'))
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
-                ->where('properties.0.id', $property->id)
-                ->where('properties.0.status', 'available')
-                ->where('properties.0.status_label', 'Disponible')
-                ->where('properties.0.status_action_label', $availableActionLabel)
+                ->where('properties.data.0.id', $property->id)
+                ->where('properties.data.0.status', 'available')
+                ->where('properties.data.0.status_label', 'Disponible')
+                ->where('properties.data.0.status_action_label', $availableActionLabel)
             );
 
         $this->get(route('home'))
