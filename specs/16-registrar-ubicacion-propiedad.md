@@ -1,6 +1,6 @@
 # SPEC 16 — Registrar la ubicación de una propiedad
 
-> **Estado:** Borrador
+> **Estado:** Aprobada
 > **Depende de:** SPEC 01, SPEC 03, SPEC 04, SPEC 14
 > **Fecha:** 2026-11-10
 > **Objetivo:** Registrar y mostrar la ubicación de las propiedades por departamento, provincia y distrito del Perú.
@@ -78,8 +78,8 @@
 
 ## Riesgos
 
-| Riesgo | Mitigación |
-| --- | --- |
-| El catálogo propuesto en el backlog puede estar desactualizado. | Contrastar códigos y ubicaciones con una fuente oficial vigente y registrar la procedencia. La vigencia aún no está verificada. |
-| Los nombres de distritos pueden repetirse. | Identificar cada distrito por su jerarquía y mostrar provincia y departamento en el filtro público. |
-| El reemplazo de ciudad y zona afecta filtros y vistas existentes. | Adaptar las superficies afectadas y ejecutar sus pruebas de regresión. |
+| Riesgo                                                            | Mitigación                                                                                                                      |
+| ----------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------------------- |
+| El catálogo propuesto en el backlog puede estar desactualizado.   | Contrastar códigos y ubicaciones con una fuente oficial vigente y registrar la procedencia. La vigencia aún no está verificada. |
+| Los nombres de distritos pueden repetirse.                        | Identificar cada distrito por su jerarquía y mostrar provincia y departamento en el filtro público.                             |
+| El reemplazo de ciudad y zona afecta filtros y vistas existentes. | Adaptar las superficies afectadas y ejecutar sus pruebas de regresión.                                                          |
