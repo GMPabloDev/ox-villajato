@@ -2,6 +2,7 @@
 
 namespace App\Models;
 
+use App\Concerns\SearchesFoldedText;
 use App\Enums\Currency;
 use App\Enums\PropertyOperation;
 use App\Enums\PropertyStatus;
@@ -16,7 +17,6 @@ use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
 use Illuminate\Support\Carbon;
-use Illuminate\Support\Str;
 
 /**
  * @property int $id
@@ -44,20 +44,7 @@ class Property extends Model
     /** @use HasFactory<PropertyFactory> */
     use HasFactory;
 
-    /**
-     * Characters folded to their plain form when searching and sorting titles.
-     *
-     * @var array<string, string>
-     */
-    private const SEARCH_FOLDS = [
-        'Á' => 'a', 'á' => 'a',
-        'É' => 'e', 'é' => 'e',
-        'Í' => 'i', 'í' => 'i',
-        'Ó' => 'o', 'ó' => 'o',
-        'Ú' => 'u', 'ú' => 'u',
-        'Ü' => 'u', 'ü' => 'u',
-        'Ñ' => 'n', 'ñ' => 'n',
-    ];
+    use SearchesFoldedText;
 
     /**
      * Columns searched by the panel search box.
@@ -159,27 +146,9 @@ class Property extends Model
     #[Scope]
     protected function search(Builder $query, string $term): Builder
     {
-        $connection = $query->getModel()->getConnection();
-        $driver = $connection->getDriverName();
+        self::addFoldedSearch($query, self::SEARCHABLE_COLUMNS, $term);
 
-        if ($driver === 'sqlite') {
-            self::registerSqliteFold($query);
-        }
-
-        $search = $driver === 'mysql' ? trim($term) : Str::lower(Str::ascii(trim($term)));
-        $pattern = '%'.self::escapeLikePattern($search).'%';
-
-        return $query->where(function (Builder $query) use ($driver, $pattern): void {
-            foreach (self::SEARCHABLE_COLUMNS as $column) {
-                $expression = match ($driver) {
-                    'sqlite' => "panel_search_fold({$column})",
-                    'mysql' => "{$column} COLLATE utf8mb4_unicode_ci",
-                    default => self::foldedColumn($column),
-                };
-
-                $query->orWhereRaw($expression." LIKE ? ESCAPE '!'", [$pattern]);
-            }
-        });
+        return $query;
     }
 
     /**
@@ -200,42 +169,5 @@ class Property extends Model
         return $query
             ->orderByRaw($sqlite ? 'panel_search_fold(title)' : self::foldedColumn('title'))
             ->orderBy('id');
-    }
-
-    /**
-     * @param  Builder<static>  $query
-     */
-    private static function registerSqliteFold(Builder $query): void
-    {
-        $query->getModel()->getConnection()->getPdo()->sqliteCreateFunction('panel_search_fold',
-            static fn (?string $value): string => Str::lower(Str::ascii($value ?? '')),
-            1,
-        );
-    }
-
-    /**
-     * Fold a column to lowercase without accents so LIKE and ORDER BY compare
-     * the same way on SQLite and MySQL.
-     *
-     * @param  literal-string  $column
-     * @return literal-string
-     */
-    private static function foldedColumn(string $column): string
-    {
-        $expression = $column;
-
-        foreach (self::SEARCH_FOLDS as $accented => $plain) {
-            $expression = "REPLACE({$expression}, '{$accented}', '{$plain}')";
-        }
-
-        return "LOWER({$expression})";
-    }
-
-    /**
-     * Escape the wildcards of a LIKE pattern so the term matches literally.
-     */
-    private static function escapeLikePattern(string $value): string
-    {
-        return str_replace(['!', '%', '_'], ['!!', '!%', '!_'], $value);
     }
 }
