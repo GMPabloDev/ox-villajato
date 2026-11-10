@@ -58,7 +58,7 @@
         ],
         "dusk": [
             "Composer\\Config::disableProcessTimeout",
-            "sh -c 'php artisan serve --env=dusk.local --port=8001 --no-reload > storage/logs/dusk-server.log 2>&1 & pid=$!; trap \"kill $pid 2>/dev/null\" EXIT INT TERM; for i in $(seq 1 20); do curl -sf -o /dev/null http://127.0.0.1:8001 && break; sleep 0.5; done; php artisan dusk --without-tty'"
+            "@php tests/run-dusk.php"
         ],
         "lint": [
             "pint --parallel"

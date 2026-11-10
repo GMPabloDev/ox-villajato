@@ -11,15 +11,28 @@ use PHPUnit\Framework\Attributes\BeforeClass;
 
 abstract class DuskTestCase extends BaseTestCase
 {
-    /**
-     * Prepare for Dusk test execution.
-     */
+    public function createApplication()
+    {
+        DuskIsolation::databasePath();
+        $app = parent::createApplication();
+        $identity = DuskIsolation::verifyConnection($app);
+        $url = getenv('DUSK_ISOLATED_URL');
+        $token = getenv('DUSK_ISOLATED_TOKEN');
+
+        if (! is_string($url) || ! preg_match('~^http://127\.0\.0\.1:[0-9]+$~', $url) ||
+            $app['config']->get('app.url') !== $url ||
+            ! is_string($token) || ! preg_match('/^[a-f0-9]{64}$/', $token) ||
+            @file_get_contents($url.'/_dusk_isolation_probe?token='.$token, false, stream_context_create(['http' => ['timeout' => 2]])) !== $token.':'.$identity) {
+            throw new \RuntimeException('Dusk refused an unverified application server.');
+        }
+
+        return $app;
+    }
+
     #[BeforeClass]
     public static function prepare(): void
     {
-        if (! static::runningInSail()) {
-            static::startChromeDriver(['--port=9515']);
-        }
+        DuskIsolation::databasePath();
     }
 
     /**

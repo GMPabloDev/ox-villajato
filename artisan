@@ -4,6 +4,20 @@
 use Illuminate\Foundation\Application;
 use Symfony\Component\Console\Input\ArgvInput;
 
+$arguments = array_slice($argv, 1);
+while ($arguments !== [] && str_starts_with($arguments[0], '-')) {
+    $option = array_shift($arguments);
+    if ($option === '--env') {
+        array_shift($arguments);
+    }
+}
+
+$command = $arguments[0] ?? '';
+if (str_starts_with($command, 'dusk')) {
+    fwrite(STDERR, "Use composer dusk to run browser tests in isolation.\n");
+    exit(1);
+}
+
 define('LARAVEL_START', microtime(true));
 
 // Register the Composer autoloader...
