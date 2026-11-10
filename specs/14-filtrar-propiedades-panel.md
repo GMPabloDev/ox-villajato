@@ -42,21 +42,21 @@
 
 ## Criterios de aceptación
 
-- [ ] Cada control existente de estado, operación, tipo, ciudad, zona, moneda, precio y dormitorios modifica los resultados según el valor seleccionado. Los dormitorios utilizan las opciones existentes de cantidad mínima.
-- [ ] Al combinar filtros, cada resultado cumple todas las condiciones seleccionadas.
-- [ ] La búsqueda encuentra coincidencias en título, ciudad o zona sin distinguir mayúsculas ni tildes. El texto del campo no ofrece buscar por código.
-- [ ] La selección de una ciudad limita las zonas disponibles a esa ciudad. Si se cambia de ciudad y la zona elegida no pertenece a la nueva ciudad, se limpia la zona.
-- [ ] Para filtrar por rango de precio u ordenar por precio se debe elegir PEN o USD. No se comparan ni convierten importes de distintas monedas.
-- [ ] Si se quita la moneda, se limpia el rango de precio y se restablece el orden por más recientes.
-- [ ] Si el precio mínimo es mayor que el máximo, el panel lateral muestra un error, permanece abierto y no aplica el rango inválido.
-- [ ] Los cambios del panel lateral se aplican al pulsar «Mostrar resultados». Al cerrarlo sin aplicar, los cambios pendientes se descartan.
-- [ ] Las pestañas de estado muestran los totales que cumplen los demás filtros, sin limitarse a la página actual. Cada pestaña cuenta su propio estado.
-- [ ] Cada página muestra como máximo 15 propiedades. Al cambiar un filtro se vuelve a la primera página.
-- [ ] Al recargar o abrir una URL filtrada se conservan los filtros, la búsqueda, el orden y la página, sin ampliar los permisos del usuario.
-- [ ] Si una propiedad seleccionada deja de aparecer en la página visible, el detalle muestra la primera propiedad visible. Si no hay resultados, no muestra ningún detalle.
-- [ ] Si existen propiedades accesibles pero ninguna coincide, el panel informa de que no hay coincidencias y permite limpiar la búsqueda y los filtros.
-- [ ] El administrador solo recibe propiedades no archivadas del inventario completo. El agente solo recibe sus propias propiedades no archivadas. Los contadores y las opciones de ubicación tampoco revelan datos de otros agentes.
-- [ ] El listado sigue ofreciendo las acciones de gestión existentes para las propiedades visibles.
+- [x] Cada control existente de estado, operación, tipo, ciudad, zona, moneda, precio y dormitorios modifica los resultados según el valor seleccionado. Los dormitorios utilizan las opciones existentes de cantidad mínima.
+- [x] Al combinar filtros, cada resultado cumple todas las condiciones seleccionadas.
+- [x] La búsqueda encuentra coincidencias en título, ciudad o zona sin distinguir mayúsculas ni tildes. El texto del campo no ofrece buscar por código.
+- [x] La selección de una ciudad limita las zonas disponibles a esa ciudad. Si se cambia de ciudad y la zona elegida no pertenece a la nueva ciudad, se limpia la zona.
+- [x] Para filtrar por rango de precio u ordenar por precio se debe elegir PEN o USD. No se comparan ni convierten importes de distintas monedas.
+- [x] Si se quita la moneda, se limpia el rango de precio y se restablece el orden por más recientes.
+- [x] Si el precio mínimo es mayor que el máximo, el panel lateral muestra un error, permanece abierto y no aplica el rango inválido.
+- [x] Los cambios del panel lateral se aplican al pulsar «Mostrar resultados». Al cerrarlo sin aplicar, los cambios pendientes se descartan.
+- [x] Las pestañas de estado muestran los totales que cumplen los demás filtros, sin limitarse a la página actual. Cada pestaña cuenta su propio estado.
+- [x] Cada página muestra como máximo 15 propiedades. Al cambiar un filtro se vuelve a la primera página.
+- [x] Al recargar o abrir una URL filtrada se conservan los filtros, la búsqueda, el orden y la página, sin ampliar los permisos del usuario.
+- [x] Si una propiedad seleccionada deja de aparecer en la página visible, el detalle muestra la primera propiedad visible. Si no hay resultados, no muestra ningún detalle.
+- [x] Si existen propiedades accesibles pero ninguna coincide, el panel informa de que no hay coincidencias y permite limpiar la búsqueda y los filtros.
+- [x] El administrador solo recibe propiedades no archivadas del inventario completo. El agente solo recibe sus propias propiedades no archivadas. Los contadores y las opciones de ubicación tampoco revelan datos de otros agentes.
+- [x] El listado sigue ofreciendo las acciones de gestión existentes para las propiedades visibles.
 
 ## Decisiones
 
