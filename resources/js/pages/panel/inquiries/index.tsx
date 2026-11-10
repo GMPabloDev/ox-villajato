@@ -1,6 +1,6 @@
-import { Head, Link } from '@inertiajs/react';
-import { MessageSquare, X } from 'lucide-react';
-import { useState } from 'react';
+import { Head, Link, router } from '@inertiajs/react';
+import { MessageSquare, SearchX, X } from 'lucide-react';
+import { useEffect, useRef, useState } from 'react';
 import { index as inquiriesIndex } from '@/actions/App/Http/Controllers/PropertyInquiryController';
 import { PanelInquiryDetail } from '@/components/panel-inquiry-detail';
 import { PanelInquiryFilters } from '@/components/panel-inquiry-filters';
@@ -17,6 +17,12 @@ import {
     SheetHeader,
     SheetTitle,
 } from '@/components/ui/sheet';
+import {
+    hasActivePanelInquiryFilters,
+    panelInquiryFiltersToQuery,
+    type PanelInquiryFiltersValue,
+    type PanelInquiryPropertyOption,
+} from '@/lib/panel-inquiry-filters';
 import { cn } from '@/lib/utils';
 
 type PropertyInquiry = PanelInquiryListItemData & {
@@ -39,28 +45,49 @@ type PaginatedInquiries = {
     to: number | null;
 };
 
-function compareText(first: string, second: string): number {
-    return first.localeCompare(second, 'es', { sensitivity: 'base' });
+function pluralize(count: number, singular: string, plural: string): string {
+    return `${count} ${count === 1 ? singular : plural}`;
 }
 
 export default function PanelInquiriesIndex({
     inquiries,
     canSeeAllInquiries,
+    filters,
+    accessibleTotal,
+    propertyOptions,
 }: {
     inquiries: PaginatedInquiries;
     canSeeAllInquiries: boolean;
+    filters: PanelInquiryFiltersValue;
+    accessibleTotal: number;
+    propertyOptions: PanelInquiryPropertyOption[];
 }) {
     const [selectedId, setSelectedId] = useState<number | null>(
         inquiries.data[0]?.id ?? null,
     );
     const [isDetailOpen, setIsDetailOpen] = useState(false);
+    const [filtersKey, setFiltersKey] = useState(0);
+    const requestedFilters = useRef(filters);
+
+    useEffect(() => {
+        requestedFilters.current = filters;
+    }, [filters]);
 
     const selectedInquiry =
         inquiries.data.find((inquiry) => inquiry.id === selectedId) ??
         inquiries.data[0] ??
         null;
-    const total = inquiries.total;
+
+    /**
+     * Keep the selection inside the visible page, so the detail always reads
+     * as part of the list below it.
+     */
+    useEffect(() => {
+        setSelectedId(selectedInquiry?.id ?? null);
+    }, [selectedInquiry?.id]);
+
     const hasInquiries = inquiries.data.length > 0;
+    const hasActiveFilters = hasActivePanelInquiryFilters(filters);
     const pageText = canSeeAllInquiries
         ? {
               description: 'Consultas recibidas de todas las propiedades.',
@@ -74,16 +101,37 @@ export default function PanelInquiriesIndex({
               emptyDescription:
                   'Las consultas por tus propiedades aparecerán aquí.',
           };
-    const countLabel = `${total} ${
-        total === 1 ? 'consulta recibida' : 'consultas recibidas'
-    }`;
-    const resultsLabel = `${total} ${total === 1 ? 'consulta' : 'consultas'}`;
+    const countLabel = pluralize(
+        accessibleTotal,
+        'consulta recibida',
+        'consultas recibidas',
+    );
+    const matchLabel = pluralize(
+        inquiries.total,
+        'coincidencia',
+        'coincidencias',
+    );
+    const listingLabel = hasActiveFilters
+        ? matchLabel
+        : pluralize(inquiries.total, 'consulta', 'consultas');
     const footerLabel = hasInquiries
-        ? `Mostrando ${inquiries.from ?? 0} a ${inquiries.to ?? 0} de ${total} consultas`
-        : 'Sin consultas por ahora';
-    const propertyTitles = [
-        ...new Set(inquiries.data.map((inquiry) => inquiry.property.title)),
-    ].sort(compareText);
+        ? `Mostrando ${inquiries.from ?? 0} a ${inquiries.to ?? 0} de ${listingLabel}`
+        : accessibleTotal === 0
+          ? 'Sin consultas por ahora'
+          : 'Sin coincidencias';
+
+    function applyFilters(next: PanelInquiryFiltersValue) {
+        requestedFilters.current = next;
+        router.get(inquiriesIndex.url(), panelInquiryFiltersToQuery(next), {
+            preserveScroll: true,
+            preserveState: true,
+        });
+    }
+
+    function clearFilters() {
+        setFiltersKey((key) => key + 1);
+        applyFilters({ ...requestedFilters.current, search: null, property: null });
+    }
 
     function selectInquiry(inquiry: PanelInquiryListItemData) {
         setSelectedId(inquiry.id);
@@ -123,7 +171,7 @@ export default function PanelInquiriesIndex({
                         </p>
                     </div>
 
-                    {total > 0 && (
+                    {accessibleTotal > 0 && (
                         <div className="hidden items-center gap-3 border-l border-border pl-[18px] sm:flex">
                             <span className="grid size-[39px] shrink-0 place-items-center rounded-[11px] bg-secondary text-primary">
                                 <MessageSquare
@@ -151,7 +199,7 @@ export default function PanelInquiriesIndex({
                         <h2 className="flex items-center gap-2 text-xs font-semibold">
                             Consultas recibidas
                             <span className="rounded-[5px] bg-secondary px-1.5 py-0.5 text-[10px] font-medium text-secondary-foreground">
-                                {total}
+                                {accessibleTotal}
                             </span>
                         </h2>
                         <span className="hidden text-[10px] text-muted-foreground sm:block">
@@ -159,14 +207,21 @@ export default function PanelInquiriesIndex({
                         </span>
                     </header>
 
-                    <PanelInquiryFilters propertyTitles={propertyTitles} />
+                    <PanelInquiryFilters
+                        key={filtersKey}
+                        filters={filters}
+                        propertyOptions={propertyOptions}
+                        onApply={applyFilters}
+                    />
 
                     <div className="flex flex-wrap items-center justify-between gap-2 border-t border-border bg-muted/40 px-4 py-3 text-xs md:px-6">
                         <p aria-live="polite" className="text-muted-foreground">
                             <strong className="font-semibold text-foreground">
-                                {resultsLabel}
+                                {listingLabel}
                             </strong>{' '}
-                            en total
+                            {hasActiveFilters
+                                ? `de ${pluralize(accessibleTotal, 'consulta', 'consultas')}`
+                                : 'en total'}
                         </p>
                         {hasInquiries && (
                             <span className="hidden text-[11px] text-muted-foreground sm:inline">
@@ -205,7 +260,7 @@ export default function PanelInquiriesIndex({
                                 </section>
                             )}
                         </div>
-                    ) : (
+                    ) : accessibleTotal === 0 ? (
                         <div className="flex flex-col items-center justify-center px-6 py-16 text-center md:py-20">
                             <span className="grid size-14 place-items-center rounded-2xl bg-muted text-primary">
                                 <MessageSquare
@@ -219,6 +274,30 @@ export default function PanelInquiriesIndex({
                             <p className="mt-2 max-w-sm text-xs leading-[1.8] text-muted-foreground">
                                 {pageText.emptyDescription}
                             </p>
+                        </div>
+                    ) : (
+                        <div className="flex flex-col items-center justify-center px-6 py-16 text-center md:py-20">
+                            <span className="grid size-14 place-items-center rounded-2xl bg-muted text-primary">
+                                <SearchX
+                                    className="size-6"
+                                    aria-hidden="true"
+                                />
+                            </span>
+                            <h2 className="mt-5 font-display text-[19px] font-extrabold tracking-[-0.5px]">
+                                No hay consultas que coincidan
+                            </h2>
+                            <p className="mt-2 max-w-sm text-xs leading-[1.8] text-muted-foreground">
+                                Prueba con otros términos o filtros, o limpia la
+                                búsqueda para volver a ver todas tus consultas.
+                            </p>
+                            <Button
+                                type="button"
+                                variant="outline"
+                                onClick={clearFilters}
+                                className="mt-6 h-10 gap-2 rounded-[10px] border-input px-4 text-xs font-semibold"
+                            >
+                                Limpiar búsqueda y filtros
+                            </Button>
                         </div>
                     )}
 
