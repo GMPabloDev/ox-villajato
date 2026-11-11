@@ -45,8 +45,7 @@ class SamplePropertiesSeeder extends Seeder
      *         description: string,
      *         price: int,
      *         currency: string,
-     *         city: string,
-     *         zone: string,
+     *         district_code: string,
      *         bedrooms: int,
      *         bathrooms: int,
      *         area: float
@@ -64,8 +63,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Casa amplia con jardín, sala iluminada y espacios cómodos para toda la familia.',
                 'price' => 780000,
                 'currency' => Currency::Pen->value,
-                'city' => 'Lima',
-                'zone' => 'Miraflores',
+                'district_code' => '150122',
                 'bedrooms' => 4,
                 'bathrooms' => 3,
                 'area' => 210.0,
@@ -81,8 +79,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Departamento moderno con balcón, buena iluminación y distribución funcional.',
                 'price' => 185000,
                 'currency' => Currency::Usd->value,
-                'city' => 'Lima',
-                'zone' => 'San Isidro',
+                'district_code' => '150131',
                 'bedrooms' => 3,
                 'bathrooms' => 2,
                 'area' => 128.0,
@@ -98,8 +95,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Casa de descanso con terraza y ambientes abiertos, a pocos minutos de la playa.',
                 'price' => 245000,
                 'currency' => Currency::Usd->value,
-                'city' => 'Cañete',
-                'zone' => 'Asia',
+                'district_code' => '150502',
                 'bedrooms' => 4,
                 'bathrooms' => 3,
                 'area' => 185.0,
@@ -115,8 +111,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Departamento acogedor con ambientes bien distribuidos en una zona residencial.',
                 'price' => 2800,
                 'currency' => Currency::Pen->value,
-                'city' => 'Lima',
-                'zone' => 'Barranco',
+                'district_code' => '150104',
                 'bedrooms' => 2,
                 'bathrooms' => 2,
                 'area' => 92.0,
@@ -132,8 +127,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Casa de varios ambientes con terraza y espacios pensados para compartir.',
                 'price' => 690000,
                 'currency' => Currency::Pen->value,
-                'city' => 'Arequipa',
-                'zone' => 'Cayma',
+                'district_code' => '040103',
                 'bedrooms' => 3,
                 'bathrooms' => 3,
                 'area' => 176.0,
@@ -149,8 +143,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Departamento amoblado con espacios cómodos y acceso cercano a comercios y servicios.',
                 'price' => 950,
                 'currency' => Currency::Usd->value,
-                'city' => 'Arequipa',
-                'zone' => 'Yanahuara',
+                'district_code' => '040126',
                 'bedrooms' => 2,
                 'bathrooms' => 2,
                 'area' => 88.0,
@@ -166,8 +159,7 @@ class SamplePropertiesSeeder extends Seeder
                 'description' => 'Casa de diseño actual con ambientes amplios y buena entrada de luz natural.',
                 'price' => 3200,
                 'currency' => Currency::Pen->value,
-                'city' => 'Trujillo',
-                'zone' => 'Víctor Larco',
+                'district_code' => '130111',
                 'bedrooms' => 3,
                 'bathrooms' => 3,
                 'area' => 165.0,
@@ -188,6 +180,8 @@ class SamplePropertiesSeeder extends Seeder
         }
 
         $this->ensureSourceImagesExist();
+
+        $this->call(UbigeoSeeder::class);
 
         $photosDisk = Storage::disk((string) config('properties.photos_disk'));
         $propertyIndex = 0;

@@ -28,17 +28,17 @@ use Illuminate\Support\Carbon;
  * @property string $description
  * @property string $price
  * @property Currency $currency
- * @property string $city
- * @property string $zone
+ * @property string $district_code
  * @property int $bedrooms
  * @property int $bathrooms
  * @property string $area
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
+ * @property-read District $district
  * @property-read Collection<int, PropertyPhoto> $photos
  * @property-read Collection<int, PropertyInquiry> $inquiries
  */
-#[Fillable(['operation', 'status', 'type', 'title', 'description', 'price', 'currency', 'city', 'zone', 'bedrooms', 'bathrooms', 'area'])]
+#[Fillable(['operation', 'status', 'type', 'title', 'description', 'price', 'currency', 'district_code', 'bedrooms', 'bathrooms', 'area'])]
 class Property extends Model
 {
     /** @use HasFactory<PropertyFactory> */
@@ -47,11 +47,12 @@ class Property extends Model
     use SearchesFoldedText;
 
     /**
-     * Columns searched by the panel search box.
+     * Columns of the property searched by the panel search box. The location
+     * names are searched through the district of the property.
      *
      * @var list<literal-string>
      */
-    private const SEARCHABLE_COLUMNS = ['title', 'city', 'zone'];
+    private const SEARCHABLE_COLUMNS = ['title'];
 
     /**
      * Get the attributes that should be cast.
@@ -78,6 +79,16 @@ class Property extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class);
+    }
+
+    /**
+     * Get the district where the property is located.
+     *
+     * @return BelongsTo<District, $this>
+     */
+    public function district(): BelongsTo
+    {
+        return $this->belongsTo(District::class, 'district_code', 'code');
     }
 
     /**
@@ -138,7 +149,8 @@ class Property extends Model
     }
 
     /**
-     * Match the term in the title, city or zone, ignoring case and accents.
+     * Match the term in the title, the district, the province or the department,
+     * ignoring case and accents.
      *
      * @param  Builder<static>  $query
      * @return Builder<static>
@@ -146,7 +158,29 @@ class Property extends Model
     #[Scope]
     protected function search(Builder $query, string $term): Builder
     {
-        self::addFoldedSearch($query, self::SEARCHABLE_COLUMNS, $term);
+        $query->where(function (Builder $query) use ($term): void {
+            self::addFoldedMatches($query, self::SEARCHABLE_COLUMNS, $term);
+
+            $query->orWhereIn('district_code', self::districtsMatchingLocationName($term));
+        });
+
+        return $query;
+    }
+
+    /**
+     * Get the districts whose own name, province name or department name
+     * matches the term.
+     *
+     * @return Builder<District>
+     */
+    private static function districtsMatchingLocationName(string $term): Builder
+    {
+        $query = District::query()
+            ->join('provinces', 'provinces.code', '=', 'districts.province_code')
+            ->join('departments', 'departments.code', '=', 'provinces.department_code')
+            ->select('districts.code');
+
+        self::addFoldedMatches($query, ['districts.name', 'provinces.name', 'departments.name'], $term);
 
         return $query;
     }

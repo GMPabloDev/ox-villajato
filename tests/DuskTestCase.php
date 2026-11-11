@@ -2,10 +2,12 @@
 
 namespace Tests;
 
+use Database\Seeders\UbigeoSeeder;
 use Facebook\WebDriver\Chrome\ChromeOptions;
 use Facebook\WebDriver\Remote\DesiredCapabilities;
 use Facebook\WebDriver\Remote\RemoteWebDriver;
 use Illuminate\Support\Collection;
+use Illuminate\Support\Facades\Schema;
 use Laravel\Dusk\TestCase as BaseTestCase;
 use PHPUnit\Framework\Attributes\BeforeClass;
 
@@ -27,6 +29,15 @@ abstract class DuskTestCase extends BaseTestCase
         }
 
         return $app;
+    }
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+
+        if (Schema::hasTable('districts')) {
+            app(UbigeoSeeder::class)->run();
+        }
     }
 
     #[BeforeClass]

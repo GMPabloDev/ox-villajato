@@ -2,7 +2,11 @@
 
 namespace Tests\Feature\Seeders;
 
+use App\Models\Department;
+use App\Models\District;
+use App\Models\Property;
 use App\Models\PropertyPhoto;
+use App\Models\Province;
 use App\Models\User;
 use Database\Seeders\SamplePropertiesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -55,6 +59,46 @@ class SamplePropertiesSeederTest extends TestCase
 
         Storage::disk($photosDisk)->assertExists($coverPaths);
         $this->assertCount(21, Storage::disk($photosDisk)->allFiles(SamplePropertiesSeeder::PHOTO_DIRECTORY));
+    }
+
+    public function test_sample_properties_use_catalog_districts_without_confusing_homonyms(): void
+    {
+        Storage::fake((string) config('properties.photos_disk'));
+
+        User::factory()->agent()->create();
+
+        District::query()->delete();
+        Province::query()->delete();
+        Department::query()->delete();
+
+        $this->assertDatabaseCount('districts', 0);
+
+        app(SamplePropertiesSeeder::class)->run();
+
+        $this->assertDatabaseCount('districts', 1893);
+
+        $locations = Property::query()
+            ->with('district.province.department')
+            ->get()
+            ->mapWithKeys(fn (Property $property): array => [
+                $property->title => [
+                    $property->district_code,
+                    $property->district->province->department->name,
+                    $property->district->province->name,
+                    $property->district->name,
+                ],
+            ])
+            ->all();
+
+        $this->assertEquals([
+            'Casa familiar con jardín en Miraflores' => ['150122', 'Lima', 'Lima', 'Miraflores'],
+            'Departamento con balcón en San Isidro' => ['150131', 'Lima', 'Lima', 'San Isidro'],
+            'Casa de playa en Asia' => ['150502', 'Lima', 'Cañete', 'Asia'],
+            'Departamento luminoso en Barranco' => ['150104', 'Lima', 'Lima', 'Barranco'],
+            'Casa con terraza en Cayma' => ['040103', 'Arequipa', 'Arequipa', 'Cayma'],
+            'Departamento amoblado en Yanahuara' => ['040126', 'Arequipa', 'Arequipa', 'Yanahuara'],
+            'Casa moderna en Víctor Larco' => ['130111', 'La Libertad', 'Trujillo', 'Victor Larco Herrera'],
+        ], $locations);
     }
 
     public function test_seeder_requires_an_existing_agent_without_creating_partial_data(): void

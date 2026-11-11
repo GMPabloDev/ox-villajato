@@ -15,6 +15,11 @@ use Illuminate\Database\Eloquent\Factories\Factory;
 class PropertyFactory extends Factory
 {
     /**
+     * District used when the test does not choose one: Lima, Lima, Lima.
+     */
+    private const DEFAULT_DISTRICT_CODE = '150101';
+
+    /**
      * Define the model's default state.
      *
      * @return array<string, mixed>
@@ -29,8 +34,7 @@ class PropertyFactory extends Factory
             'description' => fake()->paragraph(),
             'price' => fake()->numberBetween(50_000, 2_000_000),
             'currency' => fake()->randomElement(Currency::cases()),
-            'city' => fake()->city(),
-            'zone' => fake()->streetName(),
+            'district_code' => self::DEFAULT_DISTRICT_CODE,
             'bedrooms' => fake()->numberBetween(0, 5),
             'bathrooms' => fake()->numberBetween(1, 4),
             'area' => fake()->randomFloat(2, 40, 400),
