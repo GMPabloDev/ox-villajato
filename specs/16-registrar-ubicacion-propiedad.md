@@ -1,6 +1,6 @@
 # SPEC 16 — Registrar la ubicación de una propiedad
 
-> **Estado:** Aprobada
+> **Estado:** Implementada
 > **Depende de:** SPEC 01, SPEC 03, SPEC 04, SPEC 14
 > **Fecha:** 2026-11-10
 > **Objetivo:** Registrar y mostrar la ubicación de las propiedades por departamento, provincia y distrito del Perú.
@@ -51,19 +51,19 @@
 
 ## Criterios de aceptación
 
-- [ ] Al publicar o editar, departamento, provincia y distrito son obligatorios y se eligen del catálogo local. Las provincias corresponden al departamento elegido y los distritos a la provincia elegida.
-- [ ] Al cambiar un nivel superior, se limpian las selecciones dependientes que no pertenecen a la nueva ubicación. La edición precarga los tres valores guardados.
-- [ ] El servidor rechaza valores inexistentes o combinaciones de niveles incompatibles, tanto en alta como en edición, sin guardar cambios.
-- [ ] Si el catálogo no está disponible para el formulario, se muestra un error y una opción de reintento. No se guarda una ubicación incompleta o no validada.
+- [x] Al publicar o editar, departamento, provincia y distrito son obligatorios y se eligen del catálogo local. Las provincias corresponden al departamento elegido y los distritos a la provincia elegida.
+- [x] Al cambiar un nivel superior, se limpian las selecciones dependientes que no pertenecen a la nueva ubicación. La edición precarga los tres valores guardados.
+- [x] El servidor rechaza valores inexistentes o combinaciones de niveles incompatibles, tanto en alta como en edición, sin guardar cambios.
+- [x] Si el catálogo no está disponible para el formulario, se muestra un error y una opción de reintento. No se guarda una ubicación incompleta o no validada.
 - [ ] El catálogo utilizado tiene una fuente oficial y una fecha de consulta registradas. Su vigencia se comprueba frente a la fuente oficial antes de incorporarlo.
-- [ ] La ficha, las tarjetas públicas y las vistas de propiedades del panel muestran departamento, provincia y distrito de la propiedad.
-- [ ] El panel filtra por cada nivel y combina estos filtros con los existentes. La búsqueda encuentra coincidencias por título, departamento, provincia o distrito sin distinguir mayúsculas ni tildes.
-- [ ] Los resultados, contadores y opciones del panel respetan los permisos del administrador y del agente. Sus filtros y paginación siguen funcionando al recargar la URL.
-- [ ] El filtro público muestra una opción por distrito con propiedades disponibles, identificada con su provincia y departamento. Una selección devuelve solo propiedades de ese distrito, incluso si existen distritos homónimos.
-- [ ] El filtro público se combina con operación y tipo, conserva la selección en la URL y mantiene el estado sin coincidencias y la acción de limpiar filtros.
-- [ ] El seed genera propiedades con ubicaciones válidas. Las consultas históricas se conservan al eliminar las propiedades de desarrollo autorizadas.
-- [ ] Ninguna migración elimina automáticamente propiedades existentes en producción. Si existen datos reales, se detiene la implementación y se solicita un plan de migración.
-- [ ] Las pruebas afectadas pasan y se comprueban en navegador el alta, la edición y los filtros.
+- [x] La ficha, las tarjetas públicas y las vistas de propiedades del panel muestran departamento, provincia y distrito de la propiedad.
+- [x] El panel filtra por cada nivel y combina estos filtros con los existentes. La búsqueda encuentra coincidencias por título, departamento, provincia o distrito sin distinguir mayúsculas ni tildes.
+- [x] Los resultados, contadores y opciones del panel respetan los permisos del administrador y del agente. Sus filtros y paginación siguen funcionando al recargar la URL.
+- [x] El filtro público muestra una opción por distrito con propiedades disponibles, identificada con su provincia y departamento. Una selección devuelve solo propiedades de ese distrito, incluso si existen distritos homónimos.
+- [x] El filtro público se combina con operación y tipo, conserva la selección en la URL y mantiene el estado sin coincidencias y la acción de limpiar filtros.
+- [x] El seed genera propiedades con ubicaciones válidas. Las consultas históricas se conservan al eliminar las propiedades de desarrollo autorizadas.
+- [x] Ninguna migración elimina automáticamente propiedades existentes en producción. Si existen datos reales, se detiene la implementación y se solicita un plan de migración.
+- [x] Las pruebas afectadas pasan y se comprueban en navegador el alta, la edición y los filtros.
 
 ## Decisiones
 
