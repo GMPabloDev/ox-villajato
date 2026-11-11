@@ -22,6 +22,7 @@ import {
     SheetTitle,
 } from '@/components/ui/sheet';
 import { Spinner } from '@/components/ui/spinner';
+import { useUbigeoCatalog } from '@/hooks/use-ubigeo-catalog';
 
 export type PropertyFormProperty = PropertyFormDefaults & {
     id: number;
@@ -40,6 +41,8 @@ export default function PropertyFormSheet({
     const isEditing = property !== undefined;
     const form = isEditing ? update.form(property.id) : store.form();
     const defaults: PropertyFormDefaults = property ?? {};
+    const location = useUbigeoCatalog();
+    const isLocationReady = location.status === 'ready';
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -88,6 +91,7 @@ export default function PropertyFormSheet({
                                     <PropertyFormFields
                                         errors={errors}
                                         defaults={defaults}
+                                        location={location}
                                     />
 
                                     <PropertySection
@@ -106,7 +110,9 @@ export default function PropertyFormSheet({
                             <SheetFooter className="border-t border-border bg-card px-5 py-4 sm:px-7">
                                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <p className="text-xs text-muted-foreground">
-                                        * Campos obligatorios
+                                        {location.status === 'error'
+                                            ? 'Reintenta la carga de ubicaciones para guardar.'
+                                            : '* Campos obligatorios'}
                                     </p>
                                     <div className="flex w-full gap-2 sm:w-auto">
                                         <Button
@@ -121,7 +127,9 @@ export default function PropertyFormSheet({
                                         <Button
                                             type="submit"
                                             className="flex-1 sm:flex-none"
-                                            disabled={processing}
+                                            disabled={
+                                                processing || !isLocationReady
+                                            }
                                         >
                                             {processing && <Spinner />}
                                             {isEditing

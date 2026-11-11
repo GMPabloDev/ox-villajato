@@ -28,8 +28,7 @@ class AgentPropertyManagementTest extends TestCase
             'description' => 'Casa de tres pisos con jardín y terraza.',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            ...$this->propertyLocation('150122'),
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
@@ -138,8 +137,7 @@ class AgentPropertyManagementTest extends TestCase
             'title' => 'Casa frente al parque',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => 'available',
         ]);
 
@@ -157,8 +155,10 @@ class AgentPropertyManagementTest extends TestCase
                 ->where('properties.data.0.title', 'Casa frente al parque')
                 ->where('properties.data.0.price', '250000.00')
                 ->where('properties.data.0.currency', 'PEN')
-                ->where('properties.data.0.city', 'Lima')
-                ->where('properties.data.0.zone', 'Miraflores')
+                ->where('properties.data.0.district_code', '150122')
+                ->where('properties.data.0.department', 'Lima')
+                ->where('properties.data.0.province', 'Lima')
+                ->where('properties.data.0.district', 'Miraflores')
                 ->has('properties.data.0.photos', 1)
                 ->where('properties.data.0.photos.0.id', $photo->id)
             );
@@ -474,8 +474,7 @@ class AgentPropertyManagementTest extends TestCase
             'description' => $property->description,
             'price' => $property->price,
             'currency' => $property->currency->value,
-            'city' => $property->city,
-            'zone' => $property->zone,
+            ...$this->propertyLocation($property->district_code),
             'bedrooms' => $property->bedrooms,
             'bathrooms' => $property->bathrooms,
             'area' => $property->area,

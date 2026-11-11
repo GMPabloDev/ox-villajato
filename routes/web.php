@@ -3,6 +3,7 @@
 use App\Http\Controllers\AgentController;
 use App\Http\Controllers\PropertyController;
 use App\Http\Controllers\PropertyInquiryController;
+use App\Http\Controllers\UbigeoController;
 use App\Http\Middleware\EnsurePropertyIsAvailable;
 use App\Http\Middleware\EnsurePropertyIsManageable;
 use Illuminate\Support\Facades\Route;
@@ -12,6 +13,9 @@ Route::get('/', [PropertyController::class, 'index'])->name('home');
 Route::middleware(['auth'])->group(function () {
     Route::post('properties', [PropertyController::class, 'store'])
         ->name('properties.store');
+
+    Route::get('ubigeo', [UbigeoController::class, 'index'])
+        ->name('ubigeo.index');
 });
 
 Route::get('properties/{property}', [PropertyController::class, 'show'])

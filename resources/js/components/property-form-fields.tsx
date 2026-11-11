@@ -1,6 +1,7 @@
 import type { ReactNode } from 'react';
 import { useState } from 'react';
 import InputError from '@/components/input-error';
+import PropertyLocationFields from '@/components/property-location-fields';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import {
@@ -11,6 +12,7 @@ import {
     SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import type { UbigeoCatalogState } from '@/hooks/use-ubigeo-catalog';
 import {
     propertyCurrencyOptions,
     propertyOperationOptions,
@@ -24,8 +26,9 @@ export type PropertyFormDefaults = {
     description?: string;
     price?: string;
     currency?: string;
-    city?: string;
-    zone?: string;
+    department_code?: string;
+    province_code?: string;
+    district_code?: string;
     bedrooms?: number;
     bathrooms?: number;
     area?: string;
@@ -144,9 +147,11 @@ function CurrencySelect({
 export default function PropertyFormFields({
     errors,
     defaults = {},
+    location,
 }: {
     errors: Record<string, string>;
     defaults?: PropertyFormDefaults;
+    location: UbigeoCatalogState;
 }) {
     return (
         <>
@@ -257,47 +262,11 @@ export default function PropertyFormFields({
                     <InputError message={errors.currency} />
                 </div>
 
-                <div className="grid gap-4 sm:grid-cols-2">
-                    <div className="grid gap-2">
-                        <Label
-                            htmlFor="city"
-                            className="text-[13px] font-semibold"
-                        >
-                            Ciudad
-                            <RequiredMark />
-                        </Label>
-                        <Input
-                            id="city"
-                            name="city"
-                            defaultValue={defaults.city}
-                            aria-invalid={errors.city !== undefined}
-                            aria-required="true"
-                            placeholder="Ej. Lima"
-                            className="h-11 rounded-lg bg-card text-sm shadow-none"
-                        />
-                        <InputError message={errors.city} />
-                    </div>
-
-                    <div className="grid gap-2">
-                        <Label
-                            htmlFor="zone"
-                            className="text-[13px] font-semibold"
-                        >
-                            Zona
-                            <RequiredMark />
-                        </Label>
-                        <Input
-                            id="zone"
-                            name="zone"
-                            defaultValue={defaults.zone}
-                            aria-invalid={errors.zone !== undefined}
-                            aria-required="true"
-                            placeholder="Ej. Miraflores"
-                            className="h-11 rounded-lg bg-card text-sm shadow-none"
-                        />
-                        <InputError message={errors.zone} />
-                    </div>
-                </div>
+                <PropertyLocationFields
+                    catalogState={location}
+                    defaults={defaults}
+                    errors={errors}
+                />
             </PropertySection>
 
             <PropertySection

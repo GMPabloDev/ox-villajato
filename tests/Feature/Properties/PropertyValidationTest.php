@@ -2,6 +2,7 @@
 
 namespace Tests\Feature\Properties;
 
+use App\Models\Property;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
@@ -32,8 +33,9 @@ class PropertyValidationTest extends TestCase
                 'description',
                 'price',
                 'currency',
-                'city',
-                'zone',
+                'department_code',
+                'province_code',
+                'district_code',
                 'bedrooms',
                 'bathrooms',
                 'area',
@@ -82,6 +84,124 @@ class PropertyValidationTest extends TestCase
         $this->assertDatabaseCount('properties', 0);
         $this->assertDatabaseCount('property_photos', 0);
         Storage::disk('public')->assertDirectoryEmpty('properties');
+    }
+
+    public function test_rejects_an_unknown_district_code(): void
+    {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+
+        $payload = $this->validPayload();
+        $payload['district_code'] = '999999';
+
+        $response = $this->actingAs($user)
+            ->from(route('panel.properties.index'))
+            ->post(route('properties.store'), $payload);
+
+        $response
+            ->assertRedirect(route('panel.properties.index'))
+            ->assertSessionHasErrors(['district_code' => 'El valor seleccionado para distrito no es válido.']);
+
+        $this->assertDatabaseCount('properties', 0);
+        $this->assertDatabaseCount('property_photos', 0);
+        Storage::disk('public')->assertDirectoryEmpty('properties');
+    }
+
+    public static function invalidLocationCombinations(): array
+    {
+        return [
+            'province of another department' => [
+                ['province_code' => '0401'],
+                'province_code',
+                'El valor seleccionado para provincia no es válido.',
+            ],
+            'district of another province' => [
+                ['district_code' => '040103'],
+                'district_code',
+                'El valor seleccionado para distrito no es válido.',
+            ],
+            'unknown department' => [
+                ['department_code' => '99'],
+                'department_code',
+                'El valor seleccionado para departamento no es válido.',
+            ],
+            'unknown province' => [
+                ['province_code' => '9999'],
+                'province_code',
+                'El valor seleccionado para provincia no es válido.',
+            ],
+        ];
+    }
+
+    /**
+     * @param  array<string, string>  $location
+     */
+    #[DataProvider('invalidLocationCombinations')]
+    public function test_rejects_location_levels_that_do_not_match_their_parent(
+        array $location,
+        string $field,
+        string $message,
+    ): void {
+        Storage::fake('public');
+
+        $user = User::factory()->create();
+
+        $payload = [...$this->validPayload(), ...$location];
+
+        $response = $this->actingAs($user)
+            ->from(route('panel.properties.index'))
+            ->post(route('properties.store'), $payload);
+
+        $response
+            ->assertRedirect(route('panel.properties.index'))
+            ->assertSessionHasErrors([$field => $message]);
+
+        $this->assertDatabaseCount('properties', 0);
+        $this->assertDatabaseCount('property_photos', 0);
+        Storage::disk('public')->assertDirectoryEmpty('properties');
+    }
+
+    public function test_editing_rejects_a_location_that_does_not_match_and_keeps_the_saved_one(): void
+    {
+        $property = Property::factory()->create([
+            'title' => 'Casa original',
+            'district_code' => '150122',
+        ]);
+
+        $photo = $property->photos()->create([
+            'path' => 'properties/cover.jpg',
+            'position' => 1,
+        ]);
+
+        $user = User::factory()->create();
+
+        $response = $this->actingAs($user)
+            ->from(route('panel.properties.index'))
+            ->put(route('panel.properties.update', $property), [
+                'operation' => 'sale',
+                'type' => 'house',
+                'title' => 'Casa modificada',
+                'description' => 'Descripción sin guardar.',
+                'price' => 250000,
+                'currency' => 'PEN',
+                ...$this->propertyLocation('150122'),
+                'province_code' => '0401',
+                'bedrooms' => 3,
+                'bathrooms' => 2,
+                'area' => 120.5,
+                'photo_order' => [$photo->id],
+            ]);
+
+        $response
+            ->assertRedirect(route('panel.properties.index'))
+            ->assertSessionHasErrors(['province_code' => 'El valor seleccionado para provincia no es válido.']);
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'title' => 'Casa original',
+            'district_code' => '150122',
+        ]);
     }
 
     public static function invalidScalarValues(): array
@@ -215,8 +335,7 @@ class PropertyValidationTest extends TestCase
             'description' => 'Casa de tres pisos con jardín y terraza.',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            ...$this->propertyLocation('150122'),
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,

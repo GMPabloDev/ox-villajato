@@ -23,8 +23,19 @@ trait PropertyValidationRules
             'description' => ['required', 'string'],
             'price' => ['required', 'numeric', 'gt:0'],
             'currency' => ['required', Rule::enum(Currency::class)],
-            'city' => ['required', 'string', 'max:255'],
-            'zone' => ['required', 'string', 'max:255'],
+            'department_code' => ['required', 'string', Rule::exists('departments', 'code')],
+            'province_code' => [
+                'required',
+                'string',
+                Rule::exists('provinces', 'code')
+                    ->where('department_code', $this->submittedLocationCode('department_code')),
+            ],
+            'district_code' => [
+                'required',
+                'string',
+                Rule::exists('districts', 'code')
+                    ->where('province_code', $this->submittedLocationCode('province_code')),
+            ],
             'bedrooms' => ['required', 'integer', 'min:0'],
             'bathrooms' => ['required', 'integer', 'min:0'],
             'area' => ['required', 'numeric', 'gt:0'],
@@ -42,6 +53,7 @@ trait PropertyValidationRules
             'numeric' => 'El campo :attribute debe ser un número.',
             'integer' => 'El campo :attribute debe ser un número entero.',
             'enum' => 'El valor seleccionado para :attribute no es válido.',
+            'exists' => 'El valor seleccionado para :attribute no es válido.',
             'operation.enum' => 'El valor seleccionado para operación no es válido.',
             'type.enum' => 'El valor seleccionado para tipo no es válido.',
             'currency.enum' => 'El valor seleccionado para moneda no es válido.',
@@ -56,6 +68,19 @@ trait PropertyValidationRules
     }
 
     /**
+     * Read a submitted location code only when it is a single string value.
+     *
+     * The dependent levels are validated against the code submitted for their
+     * parent, so an unexpected value is treated as an unmatched parent.
+     */
+    private function submittedLocationCode(string $field): string
+    {
+        $value = $this->input($field);
+
+        return is_string($value) ? $value : '';
+    }
+
+    /**
      * @return array<string, string>
      */
     protected function propertyAttributes(): array
@@ -67,8 +92,9 @@ trait PropertyValidationRules
             'description' => 'descripción',
             'price' => 'precio',
             'currency' => 'moneda',
-            'city' => 'ciudad',
-            'zone' => 'zona',
+            'department_code' => 'departamento',
+            'province_code' => 'provincia',
+            'district_code' => 'distrito',
             'bedrooms' => 'dormitorios',
             'bathrooms' => 'baños',
             'area' => 'área',
