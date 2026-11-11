@@ -1,6 +1,6 @@
 # SPEC 17 — Filtrar el catálogo por ubicación
 
-> **Estado:** Aprobada
+> **Estado:** Implementada
 > **Depende de:** SPEC 03, SPEC 16
 > **Fecha:** 2026-11-11
 > **Objetivo:** Permitir que el visitante filtre las propiedades disponibles por departamento, provincia y distrito.
