@@ -31,13 +31,13 @@ export default function FilterMenu({
                 data-filter-summary={id}
                 className="flex min-h-11 w-full cursor-pointer list-none items-center justify-between gap-2 rounded-lg border border-transparent px-2.5 text-xs text-muted-foreground transition-colors duration-[250ms] group-open:border-border group-open:bg-card hover:border-border hover:bg-card md:w-auto md:justify-start md:px-3.5 [&::-webkit-details-marker]:hidden"
             >
-                <span>{label}</span>
-                <strong className="text-xs font-bold text-foreground">
+                <span className="shrink-0">{label}</span>
+                <strong className="min-w-0 truncate text-xs font-bold text-foreground">
                     {valueLabel}
                 </strong>
                 <span
                     aria-hidden="true"
-                    className="mb-1 size-[7px] rotate-45 border-r-[1.5px] border-b-[1.5px] border-primary group-open:mt-1 group-open:mb-0 group-open:rotate-[225deg]"
+                    className="mb-1 size-[7px] shrink-0 rotate-45 border-r-[1.5px] border-b-[1.5px] border-primary group-open:mt-1 group-open:mb-0 group-open:rotate-[225deg]"
                 />
             </summary>
 
@@ -58,28 +58,36 @@ export default function FilterMenu({
 
 export function FilterOption({
     checked,
+    disabled = false,
     label,
     name,
     onSelect,
     value,
 }: {
     checked: boolean;
+    disabled?: boolean;
     label: string;
     name: string;
     onSelect: () => void;
     value: string;
 }) {
     return (
-        <label className="block cursor-pointer">
+        <label
+            className={cn(
+                'block',
+                disabled ? 'cursor-not-allowed' : 'cursor-pointer',
+            )}
+        >
             <input
                 type="radio"
                 name={name}
                 value={value}
                 checked={checked}
+                disabled={disabled}
                 onChange={onSelect}
                 className="peer sr-only"
             />
-            <span className="block rounded-md px-3 py-2.5 text-[13px] text-foreground peer-checked:bg-secondary peer-checked:font-bold peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-inset hover:bg-secondary">
+            <span className="block rounded-md px-3 py-2.5 text-[13px] text-foreground peer-checked:bg-secondary peer-checked:font-bold peer-checked:text-primary peer-focus-visible:ring-2 peer-focus-visible:ring-primary peer-focus-visible:ring-inset peer-disabled:cursor-not-allowed hover:bg-secondary">
                 {label}
             </span>
         </label>
