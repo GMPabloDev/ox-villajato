@@ -13,6 +13,31 @@ class PanelPropertyFiltersTest extends TestCase
 {
     use RefreshDatabase;
 
+    public function test_location_options_exclude_other_agents_inventory_even_when_filtered_by_it(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $other = User::factory()->agent()->create();
+        Property::factory()->for($agent)->create(['district_code' => '150122']);
+        Property::factory()->for($other)->create(['district_code' => '040126']);
+
+        $this->actingAs($agent)->get(route('panel.properties.index', [
+            'department_code' => '04', 'province_code' => '0401', 'district_code' => '040126',
+        ]))->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('filters.department_code', '04')
+            ->where('filters.province_code', '0401')
+            ->where('filters.district_code', '040126')
+            ->where('appliedLocation.department', 'Arequipa')
+            ->where('appliedLocation.province', 'Arequipa')
+            ->where('appliedLocation.district', 'Yanahuara')
+            ->has('properties.data', 0)
+            ->has('locations.departments', 1)
+            ->where('locations.departments.0.code', '15')
+            ->has('locations.provinces', 1)
+            ->where('locations.provinces.0.code', '1501')
+            ->has('locations.districts', 1)
+            ->where('locations.districts.0.code', '150122'));
+    }
+
     public function test_long_search_preserves_other_filters(): void
     {
         $agent = User::factory()->agent()->create();
@@ -41,36 +66,30 @@ class PanelPropertyFiltersTest extends TestCase
             collect($response->inertiaProps('properties.data'))->pluck('title')->all());
     }
 
-    public function test_search_matches_title_city_and_zone_ignoring_case_and_accents(): void
+    public function test_search_matches_the_title_ignoring_case_and_accents(): void
     {
         $agent = User::factory()->agent()->create();
 
         $jesusMaria = Property::factory()->for($agent)->create([
             'title' => 'Casa en Jesús María',
             'description' => 'Frente al parque.',
-            'city' => 'Lima',
-            'zone' => 'Jesús María',
         ]);
         $barranco = Property::factory()->for($agent)->create([
             'title' => 'Departamento en Barranco',
             'description' => 'Cerca de la iglesia Jesús María.',
-            'city' => 'Arequipa',
-            'zone' => 'Yanahuara',
         ]);
         $wanchaq = Property::factory()->for($agent)->create([
             'title' => 'Local céntrico',
             'description' => 'A una cuadra de la plaza.',
-            'city' => 'Cusco',
-            'zone' => 'Wanchaq',
         ]);
 
         $cases = [
             'jesus maria' => [$jesusMaria->id],
             'CASA' => [$jesusMaria->id],
-            'arequipa' => [$barranco->id],
-            'yanahuara' => [$barranco->id],
+            'barranco' => [$barranco->id],
             'JESÚS' => [$jesusMaria->id],
-            'wánchaq' => [$wanchaq->id],
+            'CENTRICO' => [$wanchaq->id],
+            'plaza' => [],
         ];
 
         foreach ($cases as $term => $expectedIds) {
@@ -97,9 +116,7 @@ class PanelPropertyFiltersTest extends TestCase
     {
         $agent = User::factory()->agent()->create();
         $property = Property::factory()->for($agent)->create([
-            'title' => 'Àtico luminoso',
-            'city' => 'Évry',
-            'zone' => 'München',
+            'title' => 'Àtico luminoso en Évry y München',
         ]);
 
         foreach (['atico', 'EVRY', 'munchen'] as $term) {
@@ -107,6 +124,64 @@ class PanelPropertyFiltersTest extends TestCase
 
             $response->assertOk();
             $this->assertSame([$property->id], collect($response->inertiaProps('properties.data'))->pluck('id')->all());
+        }
+    }
+
+    public function test_search_matches_department_province_and_district_names_ignoring_case(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        $miraflores = Property::factory()->for($agent)->create([
+            'title' => 'Piso frente al parque',
+            'district_code' => '150122',
+        ]);
+        $asia = Property::factory()->for($agent)->create([
+            'title' => 'Casa de playa',
+            'district_code' => '150502',
+        ]);
+        $yanahuara = Property::factory()->for($agent)->create([
+            'title' => 'Local comercial',
+            'district_code' => '040126',
+        ]);
+
+        $cases = [
+            'MIRAFLORES' => [$miraflores->id],
+            // La propiedad de Asia solo comparte «Lima» con su departamento.
+            'lima' => [$asia->id, $miraflores->id],
+            'Arequipa' => [$yanahuara->id],
+            'yanahuara' => [$yanahuara->id],
+        ];
+
+        foreach ($cases as $term => $expectedIds) {
+            $response = $this->actingAs($agent)->get(route('panel.properties.index', ['search' => $term]));
+
+            $response->assertOk();
+
+            $this->assertSame(
+                $expectedIds,
+                collect($response->inertiaProps('properties.data'))->pluck('id')->all(),
+                "La búsqueda «{$term}» no encontró la ubicación esperada.",
+            );
+        }
+    }
+
+    public function test_search_matches_province_names_without_matching_the_district(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $asia = Property::factory()->for($agent)->create([
+            'title' => 'Casa de playa',
+            'district_code' => '150502',
+        ]);
+
+        foreach (['Asia' => [$asia->id], 'cañete' => [$asia->id], 'CANETE' => [$asia->id]] as $term => $expectedIds) {
+            $response = $this->actingAs($agent)->get(route('panel.properties.index', ['search' => $term]));
+
+            $response->assertOk();
+            $this->assertSame(
+                $expectedIds,
+                collect($response->inertiaProps('properties.data'))->pluck('id')->all(),
+                "La búsqueda «{$term}» no encontró la ubicación esperada.",
+            );
         }
     }
 
@@ -152,14 +227,6 @@ class PanelPropertyFiltersTest extends TestCase
                 ['type' => 'apartment'],
                 ['Departamento disponible en Barranco', 'Departamento en alquiler en Yanahuara'],
             ],
-            'city' => [
-                ['city' => 'Lima'],
-                ['Departamento disponible en Barranco', 'Casa vendida en Surco', 'Casa en venta en Miraflores'],
-            ],
-            'zone' => [
-                ['zone' => 'Surco'],
-                ['Casa vendida en Surco'],
-            ],
             'currency' => [
                 ['currency' => 'USD'],
                 ['Departamento disponible en Barranco', 'Departamento en alquiler en Yanahuara'],
@@ -184,8 +251,28 @@ class PanelPropertyFiltersTest extends TestCase
                 ['search' => 'miraflores'],
                 ['Casa en venta en Miraflores'],
             ],
+            'department' => [
+                ['department_code' => '15'],
+                ['Departamento disponible en Barranco', 'Casa vendida en Surco', 'Casa en venta en Miraflores'],
+            ],
+            'province' => [
+                ['province_code' => '1501'],
+                ['Departamento disponible en Barranco', 'Casa vendida en Surco', 'Casa en venta en Miraflores'],
+            ],
+            'district' => [
+                ['district_code' => '150104'],
+                ['Departamento disponible en Barranco'],
+            ],
+            'department combined with another filter' => [
+                ['department_code' => '15', 'operation' => 'rent'],
+                ['Departamento disponible en Barranco'],
+            ],
+            'district combined with another filter' => [
+                ['district_code' => '150122', 'type' => 'house'],
+                ['Casa en venta en Miraflores'],
+            ],
             'search combined with another filter' => [
-                ['search' => 'departamento', 'city' => 'Lima'],
+                ['search' => 'barranco', 'type' => 'apartment'],
                 ['Departamento disponible en Barranco'],
             ],
             'combined filters' => [
@@ -193,16 +280,230 @@ class PanelPropertyFiltersTest extends TestCase
                     'status' => 'available',
                     'operation' => 'sale',
                     'type' => 'house',
-                    'city' => 'Lima',
-                    'zone' => 'Miraflores',
                     'currency' => 'PEN',
                     'min_price' => 200000,
                     'max_price' => 300000,
                     'bedrooms' => 2,
+                    'department_code' => '15',
+                    'province_code' => '1501',
                 ],
                 ['Casa en venta en Miraflores'],
             ],
         ];
+    }
+
+    public function test_location_options_only_include_the_properties_the_user_can_manage(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $otherAgent = User::factory()->agent()->create();
+
+        Property::factory()->for($agent)->create(['district_code' => '150122']);
+        Property::factory()->for($agent)->create(['district_code' => '150104']);
+        Property::factory()->for($agent)->create(['district_code' => '150131', 'status' => 'archived']);
+        Property::factory()->for($otherAgent)->create(['district_code' => '040126']);
+
+        $response = $this->actingAs($agent)->get(route('panel.properties.index'));
+
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('locations.departments', [
+                ['code' => '15', 'name' => 'Lima'],
+            ])
+            ->where('locations.provinces', [
+                ['code' => '1501', 'name' => 'Lima', 'department_code' => '15'],
+            ])
+            ->where('locations.districts', [
+                ['code' => '150104', 'name' => 'Barranco', 'province_code' => '1501', 'province' => 'Lima'],
+                ['code' => '150122', 'name' => 'Miraflores', 'province_code' => '1501', 'province' => 'Lima'],
+            ])
+        );
+    }
+
+    public function test_admin_location_options_include_every_agents_locations(): void
+    {
+        $admin = User::factory()->admin()->create();
+        $firstAgent = User::factory()->agent()->create();
+        $secondAgent = User::factory()->agent()->create();
+
+        Property::factory()->for($firstAgent)->create(['district_code' => '150122']);
+        Property::factory()->for($secondAgent)->create(['district_code' => '040126']);
+
+        $response = $this->actingAs($admin)->get(route('panel.properties.index'));
+
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('locations.departments', [
+                ['code' => '04', 'name' => 'Arequipa'],
+                ['code' => '15', 'name' => 'Lima'],
+            ])
+            ->where('locations.districts', [
+                ['code' => '150122', 'name' => 'Miraflores', 'province_code' => '1501', 'province' => 'Lima'],
+                ['code' => '040126', 'name' => 'Yanahuara', 'province_code' => '0401', 'province' => 'Arequipa'],
+            ])
+        );
+    }
+
+    public function test_an_agent_never_receives_another_agents_location_options(): void
+    {
+        $agent = User::factory()->agent()->create();
+        $otherAgent = User::factory()->agent()->create();
+
+        Property::factory()->for($otherAgent)->create(['district_code' => '040126']);
+
+        $response = $this->actingAs($agent)->get(route('panel.properties.index'));
+
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('locations.departments', [])
+            ->where('locations.provinces', [])
+            ->where('locations.districts', [])
+        );
+    }
+
+    public function test_a_selected_location_without_matching_properties_is_not_offered(): void
+    {
+        $agent = User::factory()->agent()->create();
+        Property::factory()->for($agent)->create(['district_code' => '150122']);
+
+        $response = $this->actingAs($agent)->get(route('panel.properties.index', [
+            'department_code' => '04',
+            'province_code' => '0401',
+            'district_code' => '040126',
+        ]));
+
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('properties.data', 0)
+            ->where('filters.department_code', '04')
+            ->where('filters.province_code', '0401')
+            ->where('filters.district_code', '040126')
+            ->where('locations.departments', [
+                ['code' => '15', 'name' => 'Lima'],
+            ])
+            ->where('locations.provinces', [
+                ['code' => '1501', 'name' => 'Lima', 'department_code' => '15'],
+            ])
+            ->where('locations.districts', [
+                ['code' => '150122', 'name' => 'Miraflores', 'province_code' => '1501', 'province' => 'Lima'],
+            ])
+        );
+    }
+
+    #[DataProvider('incompatibleLocationCases')]
+    public function test_incompatible_location_levels_are_cleared_before_filtering(
+        array $query,
+        array $expectedFilters,
+    ): void {
+        $agent = User::factory()->agent()->create();
+
+        $lima = Property::factory()->for($agent)->create([
+            'title' => 'Casa en Lima',
+            'district_code' => '150122',
+        ]);
+        Property::factory()->for($agent)->create([
+            'title' => 'Casa en Arequipa',
+            'district_code' => '040126',
+        ]);
+
+        $response = $this->actingAs($agent)->get(route('panel.properties.index', $query));
+
+        $response->assertOk();
+
+        $this->assertSame([$lima->id], collect($response->inertiaProps('properties.data'))->pluck('id')->all());
+
+        $response->assertInertia(fn (Assert $page) => $page
+            ->where('filters.department_code', $expectedFilters['department_code'])
+            ->where('filters.province_code', $expectedFilters['province_code'])
+            ->where('filters.district_code', $expectedFilters['district_code'])
+        );
+    }
+
+    /**
+     * @return array<string, array{array<string, string>, array{department_code: string|null, province_code: string|null, district_code: string|null}}>
+     */
+    public static function incompatibleLocationCases(): array
+    {
+        return [
+            'province from another department' => [
+                ['department_code' => '15', 'province_code' => '0401'],
+                ['department_code' => '15', 'province_code' => null, 'district_code' => null],
+            ],
+            'district from another province' => [
+                ['province_code' => '1501', 'district_code' => '040126'],
+                ['department_code' => null, 'province_code' => '1501', 'district_code' => null],
+            ],
+            'district from another department without a province' => [
+                ['department_code' => '15', 'district_code' => '040126'],
+                ['department_code' => '15', 'province_code' => null, 'district_code' => null],
+            ],
+        ];
+    }
+
+    public function test_status_counts_apply_the_location_filters_across_every_page(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        Property::factory()->for($agent)->count(16)->create([
+            'status' => 'available',
+            'district_code' => '150122',
+        ]);
+        Property::factory()->for($agent)->count(4)->create([
+            'status' => 'sold',
+            'district_code' => '150122',
+        ]);
+        Property::factory()->for($agent)->count(3)->create([
+            'status' => 'available',
+            'district_code' => '040126',
+        ]);
+
+        $response = $this->actingAs($agent)->get(route('panel.properties.index', [
+            'department_code' => '15',
+        ]));
+
+        $response->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->has('properties.data', 15)
+            ->where('properties.total', 20)
+            ->where('counts.all', 20)
+            ->where('counts.available', 16)
+            ->where('counts.sold', 4)
+            ->where('counts.rented', 0)
+        );
+    }
+
+    public function test_a_shared_panel_url_keeps_its_location_filters_and_results_when_reloaded(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        Property::factory()->for($agent)->count(16)->create([
+            'status' => 'available',
+            'district_code' => '150122',
+        ]);
+        Property::factory()->for($agent)->create([
+            'status' => 'available',
+            'district_code' => '040126',
+        ]);
+
+        $query = ['department_code' => '15', 'district_code' => '150122', 'page' => 2];
+
+        $first = $this->actingAs($agent)->get(route('panel.properties.index', $query));
+        $second = $this->actingAs($agent)->get(route('panel.properties.index', $query));
+
+        $first->assertOk()->assertInertia(fn (Assert $page) => $page
+            ->where('filters.department_code', '15')
+            ->where('filters.district_code', '150122')
+            ->where('properties.current_page', 2)
+            ->where('properties.total', 16)
+            ->where('counts.available', 16)
+        );
+
+        $this->assertSame(
+            collect($first->inertiaProps('properties.data'))->pluck('id')->all(),
+            collect($second->inertiaProps('properties.data'))->pluck('id')->all(),
+        );
+
+        $firstPageLink = collect($first->inertiaProps('properties.links'))
+            ->first(fn (array $link): bool => $link['label'] === '1');
+
+        $this->assertIsArray($firstPageLink);
+        $this->assertIsString($firstPageLink['url']);
+        $this->assertStringContainsString('department_code=15', $firstPageLink['url']);
+        $this->assertStringContainsString('district_code=150122', $firstPageLink['url']);
     }
 
     public function test_price_sort_uses_only_the_selected_currency_ascending(): void
@@ -342,11 +643,10 @@ class PanelPropertyFiltersTest extends TestCase
             'status' => 'available',
             'operation' => 'sale',
             'type' => 'house',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
             'currency' => 'PEN',
             'price' => 250000,
             'bedrooms' => 3,
+            'district_code' => '150122',
         ]);
 
         $response = $this->actingAs($agent)->get(route('panel.properties.index', [
@@ -354,8 +654,9 @@ class PanelPropertyFiltersTest extends TestCase
             'status' => 'available',
             'operation' => 'sale',
             'type' => 'house',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'department_code' => '15',
+            'province_code' => '1501',
+            'district_code' => '150122',
             'currency' => 'PEN',
             'min_price' => 200000,
             'max_price' => 300000,
@@ -369,8 +670,9 @@ class PanelPropertyFiltersTest extends TestCase
             ->where('filters.status', 'available')
             ->where('filters.operation', 'sale')
             ->where('filters.type', 'house')
-            ->where('filters.city', 'Lima')
-            ->where('filters.zone', 'Miraflores')
+            ->where('filters.department_code', '15')
+            ->where('filters.province_code', '1501')
+            ->where('filters.district_code', '150122')
             ->where('filters.currency', 'PEN')
             ->where('filters.min_price', '200000')
             ->where('filters.max_price', '300000')
@@ -379,28 +681,14 @@ class PanelPropertyFiltersTest extends TestCase
         );
     }
 
-    public function test_location_names_all_and_any_are_real_filters(): void
-    {
-        $agent = User::factory()->agent()->create();
-        $first = Property::factory()->for($agent)->create(['city' => 'all', 'zone' => 'any']);
-        $second = Property::factory()->for($agent)->create(['city' => 'any', 'zone' => 'all']);
-        Property::factory()->for($agent)->create(['city' => 'Lima', 'zone' => 'Surco']);
-
-        foreach ([['city', 'all', $first], ['city', 'any', $second], ['zone', 'any', $first], ['zone', 'all', $second]] as [$key, $value, $property]) {
-            $response = $this->actingAs($agent)->get(route('panel.properties.index', [$key => $value]));
-            $response->assertOk();
-            $this->assertSame([$property->id], collect($response->inertiaProps('properties.data'))->pluck('id')->all());
-        }
-    }
-
     public function test_out_of_range_page_redirects_to_last_page_preserving_filters(): void
     {
         $agent = User::factory()->agent()->create();
-        Property::factory()->for($agent)->create(['city' => 'Lima']);
-        $response = $this->actingAs($agent)->get(route('panel.properties.index', ['city' => 'Lima', 'page' => 2]));
-        $response->assertRedirect(route('panel.properties.index', ['city' => 'Lima', 'page' => 1]));
-        $this->followingRedirects()->actingAs($agent)->get(route('panel.properties.index', ['city' => 'Lima', 'page' => 2]))
-            ->assertOk()->assertInertia(fn (Assert $page) => $page->has('properties.data', 1)->where('filters.city', 'Lima'));
+        Property::factory()->for($agent)->create(['operation' => 'rent']);
+        $response = $this->actingAs($agent)->get(route('panel.properties.index', ['operation' => 'rent', 'page' => 2]));
+        $response->assertRedirect(route('panel.properties.index', ['operation' => 'rent', 'page' => 1]));
+        $this->followingRedirects()->actingAs($agent)->get(route('panel.properties.index', ['operation' => 'rent', 'page' => 2]))
+            ->assertOk()->assertInertia(fn (Assert $page) => $page->has('properties.data', 1)->where('filters.operation', 'rent'));
     }
 
     public function test_all_and_any_control_values_mean_no_filter(): void
@@ -416,6 +704,9 @@ class PanelPropertyFiltersTest extends TestCase
             'type' => 'all',
             'currency' => 'all',
             'bedrooms' => 'any',
+            'department_code' => 'all',
+            'province_code' => 'all',
+            'district_code' => 'all',
         ]));
 
         $response->assertOk()->assertInertia(fn (Assert $page) => $page
@@ -423,6 +714,9 @@ class PanelPropertyFiltersTest extends TestCase
             ->where('filters.status', null)
             ->where('filters.operation', null)
             ->where('filters.type', null)
+            ->where('filters.department_code', null)
+            ->where('filters.province_code', null)
+            ->where('filters.district_code', null)
             ->where('filters.currency', null)
             ->where('filters.bedrooms', null)
             ->where('filters.sort', 'recent')
@@ -484,6 +778,21 @@ class PanelPropertyFiltersTest extends TestCase
                 'bedrooms',
                 'El campo dormitorios debe ser mayor o igual a 1.',
             ],
+            'department' => [
+                ['department_code' => '99'],
+                'department_code',
+                'El valor seleccionado para departamento no es válido.',
+            ],
+            'province' => [
+                ['province_code' => '9999'],
+                'province_code',
+                'El valor seleccionado para provincia no es válido.',
+            ],
+            'district' => [
+                ['district_code' => '999999'],
+                'district_code',
+                'El valor seleccionado para distrito no es válido.',
+            ],
             'min price' => [
                 ['min_price' => 'abc'],
                 'min_price',
@@ -509,27 +818,22 @@ class PanelPropertyFiltersTest extends TestCase
         Property::factory()->for($agent)->count(16)->create([
             'operation' => 'rent',
             'status' => 'available',
-            'city' => 'Lima',
         ]);
         Property::factory()->for($agent)->count(4)->create([
             'operation' => 'rent',
             'status' => 'sold',
-            'city' => 'Lima',
         ]);
         Property::factory()->for($agent)->count(2)->create([
             'operation' => 'rent',
             'status' => 'rented',
-            'city' => 'Lima',
         ]);
         Property::factory()->for($agent)->count(3)->create([
             'operation' => 'sale',
             'status' => 'available',
-            'city' => 'Lima',
         ]);
 
         $response = $this->actingAs($agent)->get(route('panel.properties.index', [
             'operation' => 'rent',
-            'city' => 'Lima',
             'status' => 'available',
         ]));
 
@@ -549,16 +853,14 @@ class PanelPropertyFiltersTest extends TestCase
 
         $properties = Property::factory()->for($agent)->count(16)->create([
             'status' => 'available',
-            'city' => 'Lima',
         ]);
 
         Property::factory()->for($agent)->create([
-            'status' => 'available',
-            'city' => 'Cusco',
+            'status' => 'sold',
         ]);
 
         $firstPage = $this->actingAs($agent)->get(route('panel.properties.index', [
-            'city' => 'Lima',
+            'status' => 'available',
         ]));
 
         $firstPage->assertOk()->assertInertia(fn (Assert $page) => $page
@@ -570,7 +872,7 @@ class PanelPropertyFiltersTest extends TestCase
         $firstPageIds = collect($firstPage->inertiaProps('properties.data'))->pluck('id')->all();
 
         $secondPage = $this->actingAs($agent)->get(route('panel.properties.index', [
-            'city' => 'Lima',
+            'status' => 'available',
             'page' => 2,
         ]));
 
@@ -591,34 +893,26 @@ class PanelPropertyFiltersTest extends TestCase
 
         $this->assertIsArray($secondPageLink);
         $this->assertIsString($secondPageLink['url']);
-        $this->assertStringContainsString('city=Lima', $secondPageLink['url']);
+        $this->assertStringContainsString('status=available', $secondPageLink['url']);
     }
 
-    public function test_agent_only_receives_their_own_non_archived_properties_in_results_counts_and_options(): void
+    public function test_agent_only_receives_their_own_non_archived_properties_in_results_and_counts(): void
     {
         $agent = User::factory()->agent()->create();
         $otherAgent = User::factory()->agent()->create();
 
         $ownAvailable = Property::factory()->for($agent)->create([
             'status' => 'available',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
         ]);
         $ownSold = Property::factory()->for($agent)->create([
             'status' => 'sold',
-            'city' => 'Lima',
-            'zone' => 'Surco',
         ]);
         Property::factory()->for($agent)->create([
             'status' => 'archived',
-            'city' => 'Piura',
-            'zone' => 'Castilla',
         ]);
         Property::factory()->for($otherAgent)->create([
             'status' => 'available',
             'title' => 'Casa ajena',
-            'city' => 'Arequipa',
-            'zone' => 'Yanahuara',
         ]);
 
         $response = $this->actingAs($agent)->get(route('panel.properties.index'));
@@ -636,8 +930,6 @@ class PanelPropertyFiltersTest extends TestCase
             ->where('counts.available', 1)
             ->where('counts.sold', 1)
             ->where('counts.rented', 0)
-            ->where('cities', ['Lima'])
-            ->where('zones', ['Miraflores', 'Surco'])
         );
     }
 
@@ -648,15 +940,12 @@ class PanelPropertyFiltersTest extends TestCase
 
         $adminProperty = Property::factory()->for($admin)->create([
             'status' => 'available',
-            'city' => 'Áncash',
         ]);
         $agentProperty = Property::factory()->for($agent)->create([
             'status' => 'sold',
-            'city' => 'Cusco',
         ]);
         Property::factory()->for($agent)->create([
             'status' => 'archived',
-            'city' => 'Piura',
         ]);
 
         $response = $this->actingAs($admin)->get(route('panel.properties.index'));
@@ -674,7 +963,6 @@ class PanelPropertyFiltersTest extends TestCase
             ->where('counts.available', 1)
             ->where('counts.sold', 1)
             ->where('counts.rented', 0)
-            ->where('cities', ['Áncash', 'Cusco'])
         );
     }
 
@@ -686,14 +974,10 @@ class PanelPropertyFiltersTest extends TestCase
         Property::factory()->for($agent)->create([
             'title' => 'Casa propia',
             'status' => 'available',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
         ]);
         Property::factory()->for($otherAgent)->create([
             'title' => 'Casa ajena',
             'status' => 'available',
-            'city' => 'Arequipa',
-            'zone' => 'Yanahuara',
         ]);
 
         $searchResponse = $this->actingAs($agent)->get(route('panel.properties.index', [
@@ -704,111 +988,7 @@ class PanelPropertyFiltersTest extends TestCase
             ->has('properties.data', 0)
             ->where('properties.total', 0)
             ->where('counts.all', 0)
-            ->where('cities', ['Lima'])
-            ->where('zones', ['Miraflores'])
         );
-
-        foreach ([['city' => 'Arequipa'], ['zone' => 'Yanahuara']] as $query) {
-            $response = $this->actingAs($agent)->get(route('panel.properties.index', $query));
-
-            $response->assertOk()->assertInertia(fn (Assert $page) => $page
-                ->has('properties.data', 0)
-                ->where('properties.total', 0)
-                ->where('counts.all', 0)
-                ->where('cities', ['Lima'])
-            );
-
-            $this->assertNotContains('Yanahuara', $response->inertiaProps('zones'));
-        }
-    }
-
-    public function test_city_filter_limits_zone_options_to_that_city(): void
-    {
-        $agent = User::factory()->agent()->create();
-
-        $locations = [
-            ['Lima', 'Miraflores'],
-            ['Lima', 'Surco'],
-            ['Arequipa', 'Yanahuara'],
-            ['Arequipa', 'Cayma'],
-            ['Cusco', 'Wanchaq'],
-        ];
-
-        foreach ($locations as [$city, $zone]) {
-            Property::factory()->for($agent)->create([
-                'city' => $city,
-                'zone' => $zone,
-            ]);
-        }
-
-        $this->actingAs($agent)
-            ->get(route('panel.properties.index'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('cities', ['Arequipa', 'Cusco', 'Lima'])
-                ->where('zones', ['Cayma', 'Miraflores', 'Surco', 'Wanchaq', 'Yanahuara'])
-            );
-
-        $this->actingAs($agent)
-            ->get(route('panel.properties.index', ['city' => 'Lima']))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('cities', ['Arequipa', 'Cusco', 'Lima'])
-                ->where('zones', ['Miraflores', 'Surco'])
-            );
-    }
-
-    public function test_zone_options_are_grouped_by_city_without_revealing_other_agents_properties(): void
-    {
-        $agent = User::factory()->agent()->create();
-        $otherAgent = User::factory()->agent()->create();
-
-        foreach ([['Lima', 'surco'], ['Lima', 'Miraflores'], ['Arequipa', 'Yanahuara']] as [$city, $zone]) {
-            Property::factory()->for($agent)->create([
-                'city' => $city,
-                'zone' => $zone,
-            ]);
-        }
-
-        Property::factory()->for($agent)->create([
-            'status' => 'archived',
-            'city' => 'Piura',
-            'zone' => 'Castilla',
-        ]);
-        Property::factory()->for($otherAgent)->create([
-            'city' => 'Arequipa',
-            'zone' => 'Cayma',
-        ]);
-
-        $this->actingAs($agent)
-            ->get(route('panel.properties.index'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('zonesByCity.Arequipa', ['Yanahuara'])
-                ->where('zonesByCity.Lima', ['Miraflores', 'surco'])
-                ->missing('zonesByCity.Piura')
-                ->where('zones', ['Miraflores', 'surco', 'Yanahuara'])
-            );
-    }
-
-    public function test_location_options_are_sorted_without_case_or_accents(): void
-    {
-        $agent = User::factory()->agent()->create();
-
-        foreach ([['lima', 'surco'], ['árequipa', 'cayma'], ['Cusco', 'Wanchaq']] as [$city, $zone]) {
-            Property::factory()->for($agent)->create([
-                'city' => $city,
-                'zone' => $zone,
-            ]);
-        }
-
-        $this->actingAs($agent)
-            ->get(route('panel.properties.index'))
-            ->assertOk()
-            ->assertInertia(fn (Assert $page) => $page
-                ->where('cities', ['árequipa', 'Cusco', 'lima'])
-                ->where('zones', ['cayma', 'surco', 'Wanchaq'])
-            );
     }
 
     /**
@@ -822,44 +1002,40 @@ class PanelPropertyFiltersTest extends TestCase
                 'status' => 'available',
                 'operation' => 'sale',
                 'type' => 'house',
-                'city' => 'Lima',
-                'zone' => 'Miraflores',
                 'currency' => 'PEN',
                 'price' => 250000,
                 'bedrooms' => 3,
+                'district_code' => '150122',
             ]),
             'rentedApartment' => Property::factory()->for($agent)->create([
                 'title' => 'Departamento en alquiler en Yanahuara',
                 'status' => 'rented',
                 'operation' => 'rent',
                 'type' => 'apartment',
-                'city' => 'Arequipa',
-                'zone' => 'Yanahuara',
                 'currency' => 'USD',
                 'price' => 1200,
                 'bedrooms' => 2,
+                'district_code' => '040126',
             ]),
             'soldHouse' => Property::factory()->for($agent)->create([
                 'title' => 'Casa vendida en Surco',
                 'status' => 'sold',
                 'operation' => 'sale',
                 'type' => 'house',
-                'city' => 'Lima',
-                'zone' => 'Surco',
                 'currency' => 'PEN',
                 'price' => 500000,
                 'bedrooms' => 4,
+                'district_code' => '150140',
             ]),
             'availableApartment' => Property::factory()->for($agent)->create([
                 'title' => 'Departamento disponible en Barranco',
                 'status' => 'available',
                 'operation' => 'rent',
                 'type' => 'apartment',
-                'city' => 'Lima',
-                'zone' => 'Barranco',
                 'currency' => 'USD',
                 'price' => 900,
                 'bedrooms' => 1,
+                'district_code' => '150104',
             ]),
         ];
     }

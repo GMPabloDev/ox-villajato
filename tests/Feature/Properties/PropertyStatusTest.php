@@ -63,17 +63,17 @@ class PropertyStatusTest extends TestCase
             );
     }
 
-    public function test_closing_a_property_removes_it_from_the_catalog_and_the_zone_options(): void
+    public function test_closing_a_property_removes_it_from_the_catalog(): void
     {
         $property = Property::factory()->create([
             'operation' => 'sale',
             'title' => 'Casa frente al parque',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => 'available',
         ]);
         $other = Property::factory()->create([
             'title' => 'Departamento en Barranco',
-            'zone' => 'Barranco',
+            'district_code' => '150104',
             'status' => 'available',
         ]);
 
@@ -89,7 +89,6 @@ class PropertyStatusTest extends TestCase
                 ->component('properties/index')
                 ->has('properties', 1)
                 ->where('properties.0.id', $other->id)
-                ->where('zones', ['Barranco'])
             );
     }
 
@@ -105,7 +104,7 @@ class PropertyStatusTest extends TestCase
     }
 
     #[DataProvider('closedPropertyStatuses')]
-    public function test_reopening_a_closed_property_marks_it_available_and_returns_it_to_catalog_zones_and_public_page(
+    public function test_reopening_a_closed_property_marks_it_available_and_returns_it_to_the_catalog_and_public_page(
         string $operation,
         string $status,
         string $availableActionLabel,
@@ -113,7 +112,7 @@ class PropertyStatusTest extends TestCase
         $property = Property::factory()->create([
             'operation' => $operation,
             'title' => 'Casa frente al parque',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => $status,
         ]);
 
@@ -121,7 +120,6 @@ class PropertyStatusTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('properties', 0)
-                ->where('zones', [])
             );
 
         $user = User::factory()->create();
@@ -155,7 +153,6 @@ class PropertyStatusTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('properties', 1)
                 ->where('properties.0.id', $property->id)
-                ->where('zones', ['Miraflores'])
             );
 
         $this->get(route('properties.show', $property))->assertOk();

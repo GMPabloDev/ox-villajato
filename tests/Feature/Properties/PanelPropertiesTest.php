@@ -21,8 +21,7 @@ class PanelPropertiesTest extends TestCase
             'description' => 'Casa de tres pisos con jardín.',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
@@ -50,8 +49,12 @@ class PanelPropertiesTest extends TestCase
                 ->where('properties.data.0.price', '250000.00')
                 ->where('properties.data.0.price_formatted', 'S/ 250,000')
                 ->where('properties.data.0.currency', 'PEN')
-                ->where('properties.data.0.city', 'Lima')
-                ->where('properties.data.0.zone', 'Miraflores')
+                ->where('properties.data.0.department_code', '15')
+                ->where('properties.data.0.province_code', '1501')
+                ->where('properties.data.0.district_code', '150122')
+                ->where('properties.data.0.department', 'Lima')
+                ->where('properties.data.0.province', 'Lima')
+                ->where('properties.data.0.district', 'Miraflores')
                 ->where('properties.data.0.bedrooms', 3)
                 ->where('properties.data.0.bathrooms', 2)
                 ->where('properties.data.0.area', '120.50')
@@ -142,8 +145,7 @@ class PanelPropertiesTest extends TestCase
             'description' => 'Casa de tres pisos con jardín.',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
@@ -171,8 +173,12 @@ class PanelPropertiesTest extends TestCase
                 ->where('properties.data.0.description', 'Casa de tres pisos con jardín.')
                 ->where('properties.data.0.price', '250000.00')
                 ->where('properties.data.0.currency', 'PEN')
-                ->where('properties.data.0.city', 'Lima')
-                ->where('properties.data.0.zone', 'Miraflores')
+                ->where('properties.data.0.department_code', '15')
+                ->where('properties.data.0.province_code', '1501')
+                ->where('properties.data.0.district_code', '150122')
+                ->where('properties.data.0.department', 'Lima')
+                ->where('properties.data.0.province', 'Lima')
+                ->where('properties.data.0.district', 'Miraflores')
                 ->where('properties.data.0.bedrooms', 3)
                 ->where('properties.data.0.bathrooms', 2)
                 ->where('properties.data.0.area', '120.50')
@@ -192,8 +198,7 @@ class PanelPropertiesTest extends TestCase
             'title' => 'Casa frente al parque',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
         ]);
 
         $property->photos()->createMany([
@@ -214,8 +219,7 @@ class PanelPropertiesTest extends TestCase
                 'description' => 'Descripción actualizada.',
                 'price' => 1500,
                 'currency' => 'USD',
-                'city' => 'Arequipa',
-                'zone' => 'Cayma',
+                ...$this->propertyLocation('040103'),
                 'bedrooms' => 2,
                 'bathrooms' => 1,
                 'area' => 95.5,
@@ -237,8 +241,7 @@ class PanelPropertiesTest extends TestCase
             'description' => 'Descripción actualizada.',
             'price' => 1500,
             'currency' => 'USD',
-            'city' => 'Arequipa',
-            'zone' => 'Cayma',
+            'district_code' => '040103',
             'bedrooms' => 2,
             'bathrooms' => 1,
             'area' => 95.5,
@@ -264,7 +267,7 @@ class PanelPropertiesTest extends TestCase
         $property = Property::factory()->create([
             'operation' => 'sale',
             'title' => 'Casa frente al parque',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => 'sold',
         ]);
 
@@ -304,7 +307,6 @@ class PanelPropertiesTest extends TestCase
             ->assertOk()
             ->assertInertia(fn (Assert $page) => $page
                 ->has('properties', 0)
-                ->where('zones', [])
             );
 
         $this->get(route('panel.properties.index'))
@@ -320,7 +322,7 @@ class PanelPropertiesTest extends TestCase
         $property = Property::factory()->create([
             'operation' => 'sale',
             'title' => 'Casa frente al parque',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => 'sold',
         ]);
 
@@ -367,7 +369,6 @@ class PanelPropertiesTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('properties', 1)
                 ->where('properties.0.id', $property->id)
-                ->where('zones', ['Miraflores'])
             );
     }
 
@@ -832,8 +833,7 @@ class PanelPropertiesTest extends TestCase
             'description' => $property->description,
             'price' => $property->price,
             'currency' => $property->currency->value,
-            'city' => $property->city,
-            'zone' => $property->zone,
+            ...$this->propertyLocation($property->district_code),
             'bedrooms' => $property->bedrooms,
             'bathrooms' => $property->bathrooms,
             'area' => $property->area,

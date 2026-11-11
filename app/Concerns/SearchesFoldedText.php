@@ -31,6 +31,20 @@ trait SearchesFoldedText
      */
     protected static function addFoldedSearch(Builder $query, array $columns, string $term): void
     {
+        $query->where(function (Builder $query) use ($columns, $term): void {
+            self::addFoldedMatches($query, $columns, $term);
+        });
+    }
+
+    /**
+     * Add an OR condition for each column expression matching the term, ignoring
+     * case and accents. Qualified columns such as "districts.name" are accepted.
+     *
+     * @param  Builder<*>  $query
+     * @param  list<literal-string>  $expressions
+     */
+    protected static function addFoldedMatches(Builder $query, array $expressions, string $term): void
+    {
         $driver = $query->getModel()->getConnection()->getDriverName();
 
         if ($driver === 'sqlite') {
@@ -40,17 +54,15 @@ trait SearchesFoldedText
         $search = $driver === 'mysql' ? trim($term) : Str::lower(Str::ascii(trim($term)));
         $pattern = '%'.self::escapeLikePattern($search).'%';
 
-        $query->where(function (Builder $query) use ($driver, $columns, $pattern): void {
-            foreach ($columns as $column) {
-                $expression = match ($driver) {
-                    'sqlite' => "panel_search_fold({$column})",
-                    'mysql' => "{$column} COLLATE utf8mb4_unicode_ci",
-                    default => self::foldedColumn($column),
-                };
+        foreach ($expressions as $expression) {
+            $folded = match ($driver) {
+                'sqlite' => "panel_search_fold({$expression})",
+                'mysql' => "{$expression} COLLATE utf8mb4_unicode_ci",
+                default => self::foldedColumn($expression),
+            };
 
-                $query->orWhereRaw($expression." LIKE ? ESCAPE '!'", [$pattern]);
-            }
-        });
+            $query->orWhereRaw($folded." LIKE ? ESCAPE '!'", [$pattern]);
+        }
     }
 
     /**

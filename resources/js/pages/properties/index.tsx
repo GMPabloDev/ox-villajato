@@ -10,6 +10,7 @@ import {
     type PropertyOperationValue,
     type PropertyTypeValue,
 } from '@/lib/property-options';
+import { locationLabel } from '@/lib/ubigeo';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 
@@ -21,8 +22,9 @@ type PropertyCard = {
     type: PropertyTypeValue;
     type_label: string;
     price_formatted: string;
-    city: string;
-    zone: string;
+    district: string;
+    province: string;
+    department: string;
     bedrooms: number;
     bathrooms: number;
     area: string;
@@ -30,10 +32,29 @@ type PropertyCard = {
     url: string;
 };
 
+type CatalogDistrict = {
+    code: string;
+    name: string;
+    province: string;
+    department: string;
+};
+
+/**
+ * District, province and department, so districts that share a name stay
+ * distinguishable in the public filter.
+ */
+function districtLabel(district: CatalogDistrict): string {
+    return locationLabel({
+        district: district.name,
+        province: district.province,
+        department: district.department,
+    });
+}
+
 type CatalogFilters = {
     operation: PropertyOperationValue | null;
     type: PropertyTypeValue | null;
-    zone: string | null;
+    district_code: string | null;
 };
 
 const operationTabs: { label: string; value: PropertyOperationValue | null }[] =
@@ -50,8 +71,8 @@ function filtersToQuery(filters: CatalogFilters): Record<string, string> {
         query.type = filters.type;
     }
 
-    if (filters.zone) {
-        query.zone = filters.zone;
+    if (filters.district_code) {
+        query.district_code = filters.district_code;
     }
 
     return query;
@@ -66,31 +87,32 @@ function catalogHref(
 
 export default function PropertiesIndex({
     properties,
-    zones,
+    districts,
+    appliedDistrict,
     filters,
 }: {
     properties: PropertyCard[];
-    zones: string[];
+    districts: CatalogDistrict[];
+    appliedDistrict: CatalogDistrict | null;
     filters: CatalogFilters;
 }) {
-    const [openMenu, setOpenMenu] = useState<'type' | 'zone' | null>(null);
+    const [openMenu, setOpenMenu] = useState<'type' | 'district' | null>(null);
 
     const hasActiveFilters = Boolean(
-        filters.operation || filters.type || filters.zone,
+        filters.operation || filters.type || filters.district_code,
     );
 
     const total = properties.length;
     const typeLabel =
         propertyTypeOptions.find((option) => option.value === filters.type)
             ?.label ?? 'Todos';
-    const zoneLabel = filters.zone ?? 'Todas';
-
-    const zoneOptions =
-        filters.zone && !zones.includes(filters.zone)
-            ? [...zones, filters.zone].sort((a, b) =>
-                  a.localeCompare(b, 'es', { sensitivity: 'base' }),
-              )
-            : zones;
+    const districtValueLabel =
+        districts
+            .filter((district) => district.code === filters.district_code)
+            .map(districtLabel)
+            .at(0) ??
+        (appliedDistrict ? districtLabel(appliedDistrict) : null) ??
+        (filters.district_code ? `Distrito ${filters.district_code}` : 'Todos');
 
     useEffect(() => {
         if (openMenu === null) {
@@ -126,7 +148,7 @@ export default function PropertiesIndex({
         };
     }, [openMenu]);
 
-    const handleMenuToggle = (menu: 'type' | 'zone', open: boolean) => {
+    const handleMenuToggle = (menu: 'type' | 'district', open: boolean) => {
         setOpenMenu((current) => {
             if (open) {
                 return menu;
@@ -394,33 +416,40 @@ export default function PropertiesIndex({
                             </FilterMenu>
 
                             <FilterMenu
-                                id="zone"
-                                label="Zona"
-                                valueLabel={zoneLabel}
-                                legend="Zona"
-                                open={openMenu === 'zone'}
+                                id="district"
+                                label="Distrito"
+                                valueLabel={districtValueLabel}
+                                legend="Distrito"
+                                open={openMenu === 'district'}
                                 align="right"
                                 onOpenChange={(open) =>
-                                    handleMenuToggle('zone', open)
+                                    handleMenuToggle('district', open)
                                 }
                             >
                                 <FilterOption
-                                    name="property-zone"
+                                    name="property-district"
                                     value="all"
-                                    label="Todas las zonas"
-                                    checked={filters.zone === null}
+                                    label="Todos los distritos"
+                                    checked={filters.district_code === null}
                                     onSelect={() =>
-                                        applyFilters({ zone: null })
+                                        applyFilters({ district_code: null })
                                     }
                                 />
-                                {zoneOptions.map((zone) => (
+                                {districts.map((district) => (
                                     <FilterOption
-                                        key={zone}
-                                        name="property-zone"
-                                        value={zone}
-                                        label={zone}
-                                        checked={filters.zone === zone}
-                                        onSelect={() => applyFilters({ zone })}
+                                        key={district.code}
+                                        name="property-district"
+                                        value={district.code}
+                                        label={districtLabel(district)}
+                                        checked={
+                                            filters.district_code ===
+                                            district.code
+                                        }
+                                        onSelect={() =>
+                                            applyFilters({
+                                                district_code: district.code,
+                                            })
+                                        }
                                     />
                                 ))}
                             </FilterMenu>

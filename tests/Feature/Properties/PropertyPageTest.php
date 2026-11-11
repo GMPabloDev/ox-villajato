@@ -44,8 +44,7 @@ class PropertyPageTest extends TestCase
             'description' => 'Departamento luminoso de dos dormitorios.',
             'price' => 1500,
             'currency' => 'USD',
-            'city' => 'Arequipa',
-            'zone' => 'Cayma',
+            'district_code' => '040103',
             'bedrooms' => 2,
             'bathrooms' => 1,
             'area' => 95.5,
@@ -69,8 +68,10 @@ class PropertyPageTest extends TestCase
                 ->where('property.operation_label', 'Alquiler')
                 ->where('property.type_label', 'Departamento')
                 ->where('property.price_formatted', 'US$ 1,500')
-                ->where('property.city', 'Arequipa')
-                ->where('property.zone', 'Cayma')
+                ->where('property.district_code', '040103')
+                ->where('property.department', 'Arequipa')
+                ->where('property.province', 'Arequipa')
+                ->where('property.district', 'Cayma')
                 ->where('property.bedrooms', 2)
                 ->where('property.bathrooms', 1)
                 ->where('property.area', '95.50')

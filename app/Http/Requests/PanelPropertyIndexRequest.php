@@ -6,6 +6,8 @@ use App\Enums\Currency;
 use App\Enums\PropertyOperation;
 use App\Enums\PropertyStatus;
 use App\Enums\PropertyType;
+use App\Models\District;
+use App\Models\Province;
 use Illuminate\Contracts\Validation\ValidationRule;
 use Illuminate\Foundation\Http\Attributes\RedirectToRoute;
 use Illuminate\Foundation\Http\FormRequest;
@@ -44,7 +46,7 @@ class PanelPropertyIndexRequest extends FormRequest
     {
         $query = $this->query();
 
-        foreach (['status', 'operation', 'type', 'currency', 'bedrooms'] as $key) {
+        foreach (['status', 'operation', 'type', 'currency', 'bedrooms', 'department_code', 'province_code', 'district_code'] as $key) {
             if (in_array($query[$key] ?? null, self::SENTINEL_VALUES, true)) {
                 unset($query[$key]);
             }
@@ -69,8 +71,9 @@ class PanelPropertyIndexRequest extends FormRequest
             'status' => ['nullable', Rule::enum(PropertyStatus::class)->except(PropertyStatus::Archived)],
             'operation' => ['nullable', Rule::enum(PropertyOperation::class)],
             'type' => ['nullable', Rule::enum(PropertyType::class)],
-            'city' => ['nullable', 'string', 'max:255'],
-            'zone' => ['nullable', 'string', 'max:255'],
+            'department_code' => ['nullable', 'string', Rule::exists('departments', 'code')],
+            'province_code' => ['nullable', 'string', Rule::exists('provinces', 'code')],
+            'district_code' => ['nullable', 'string', Rule::exists('districts', 'code')],
             'currency' => ['nullable', Rule::enum(Currency::class)],
             'min_price' => ['nullable', 'numeric', 'min:0'],
             'max_price' => ['nullable', 'numeric', 'min:0'],
@@ -96,6 +99,7 @@ class PanelPropertyIndexRequest extends FormRequest
             'operation.enum' => 'El valor seleccionado para operación no es válido.',
             'type.enum' => 'El valor seleccionado para tipo no es válido.',
             'currency.enum' => 'El valor seleccionado para moneda no es válido.',
+            'exists' => 'El valor seleccionado para :attribute no es válido.',
             'in' => 'El valor seleccionado para :attribute no es válido.',
         ];
     }
@@ -110,8 +114,9 @@ class PanelPropertyIndexRequest extends FormRequest
             'status' => 'estado',
             'operation' => 'operación',
             'type' => 'tipo',
-            'city' => 'ciudad',
-            'zone' => 'zona',
+            'department_code' => 'departamento',
+            'province_code' => 'provincia',
+            'district_code' => 'distrito',
             'currency' => 'moneda',
             'min_price' => 'precio mínimo',
             'max_price' => 'precio máximo',
@@ -129,8 +134,9 @@ class PanelPropertyIndexRequest extends FormRequest
      *     status: string|null,
      *     operation: string|null,
      *     type: string|null,
-     *     city: string|null,
-     *     zone: string|null,
+     *     department_code: string|null,
+     *     province_code: string|null,
+     *     district_code: string|null,
      *     currency: string|null,
      *     min_price: string|null,
      *     max_price: string|null,
@@ -148,13 +154,16 @@ class PanelPropertyIndexRequest extends FormRequest
             $sort = 'recent';
         }
 
+        $location = $this->locationFilters();
+
         return [
             'search' => $this->normalizedSearch(),
             'status' => $this->nullableString('status'),
             'operation' => $this->nullableString('operation'),
             'type' => $this->nullableString('type'),
-            'city' => $this->nullableString('city'),
-            'zone' => $this->nullableString('zone'),
+            'department_code' => $location['department'],
+            'province_code' => $location['province'],
+            'district_code' => $location['district'],
             'currency' => $currency,
             'min_price' => $rangeIsUsable ? $this->nullableString('min_price') : null,
             'max_price' => $rangeIsUsable ? $this->nullableString('max_price') : null,
@@ -171,6 +180,37 @@ class PanelPropertyIndexRequest extends FormRequest
         return $this->nullableString('currency') !== null && $this->hasInvalidPriceRange()
             ? self::PRICE_RANGE_ERROR
             : null;
+    }
+
+    /**
+     * Drop the location levels that do not belong to the level above them, so a
+     * shared URL never combines a province with another department or a district
+     * with another province.
+     *
+     * @return array{department: string|null, province: string|null, district: string|null}
+     */
+    private function locationFilters(): array
+    {
+        $department = $this->nullableString('department_code');
+        $province = $this->nullableString('province_code');
+        $district = $this->nullableString('district_code');
+
+        if ($department !== null && $province !== null
+            && Province::query()->whereKey($province)->value('department_code') !== $department) {
+            $province = null;
+        }
+
+        if ($district !== null) {
+            $selected = District::query()->with('province')->find($district, ['code', 'province_code']);
+            $fitsProvince = $province === null || $selected?->province_code === $province;
+            $fitsDepartment = $department === null || $selected?->province->department_code === $department;
+
+            if (! $fitsProvince || ! $fitsDepartment) {
+                $district = null;
+            }
+        }
+
+        return ['department' => $department, 'province' => $province, 'district' => $district];
     }
 
     private function hasInvalidPriceRange(): bool

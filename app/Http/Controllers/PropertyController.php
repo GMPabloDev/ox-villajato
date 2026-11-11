@@ -9,16 +9,19 @@ use App\Http\Requests\PanelPropertyIndexRequest;
 use App\Http\Requests\StorePropertyRequest;
 use App\Http\Requests\UpdatePropertyRequest;
 use App\Http\Resources\PropertyResource;
+use App\Models\Department;
+use App\Models\District;
 use App\Models\Property;
 use App\Models\PropertyPhoto;
+use App\Models\Province;
 use App\Models\User;
 use Illuminate\Contracts\Filesystem\Filesystem;
 use Illuminate\Database\Eloquent\Builder;
+use Illuminate\Database\Eloquent\Collection;
 use Illuminate\Filesystem\FilesystemAdapter;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Http\UploadedFile;
-use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
@@ -41,18 +44,17 @@ class PropertyController extends Controller
             [
                 'operation' => ['nullable', Rule::enum(PropertyOperation::class)],
                 'type' => ['nullable', Rule::enum(PropertyType::class)],
-                'zone' => ['nullable', 'string', 'max:255'],
+                'district_code' => ['nullable', 'string', Rule::exists('districts', 'code')],
             ],
             [
                 'operation.enum' => 'El valor seleccionado para operación no es válido.',
                 'type.enum' => 'El valor seleccionado para tipo no es válido.',
-                'string' => 'El campo :attribute debe ser texto.',
-                'max' => 'El campo :attribute no debe superar :max caracteres.',
+                'district_code.exists' => 'El valor seleccionado para distrito no es válido.',
             ],
             [
                 'operation' => 'operación',
                 'type' => 'tipo',
-                'zone' => 'zona',
+                'district_code' => 'distrito',
             ],
         );
 
@@ -62,12 +64,13 @@ class PropertyController extends Controller
                 ->withErrors($validator);
         }
 
-        /** @var array{operation?: string|null, type?: string|null, zone?: string|null} $filters */
+        /** @var array{operation?: string|null, type?: string|null, district_code?: string|null} $filters */
         $filters = $validator->validated();
+        $districtCode = $filters['district_code'] ?? null;
 
         $properties = Property::query()
             ->available()
-            ->with('photos')
+            ->with('photos', 'district.province.department')
             ->when(
                 $filters['operation'] ?? null,
                 fn (Builder $query, string $operation): Builder => $query->where('operation', $operation),
@@ -77,30 +80,73 @@ class PropertyController extends Controller
                 fn (Builder $query, string $type): Builder => $query->where('type', $type),
             )
             ->when(
-                $filters['zone'] ?? null,
-                fn (Builder $query, string $zone): Builder => $query->where('zone', $zone),
+                $districtCode,
+                fn (Builder $query, string $district): Builder => $query->where('district_code', $district),
             )
             ->latest('id')
             ->get();
 
-        $zones = $this->sortLocations(
-            Property::query()
-                ->available()
-                ->distinct()
-                ->pluck('zone'),
-        );
+        $districts = $this->catalogDistricts();
+        $appliedDistrict = null;
+
+        if ($districtCode !== null && ! collect($districts)->contains('code', $districtCode)) {
+            $district = District::query()->with('province.department')->find($districtCode);
+            if ($district !== null) {
+                $appliedDistrict = [
+                    'code' => $district->code,
+                    'name' => $district->name,
+                    'province' => $district->province->name,
+                    'department' => $district->province->department->name,
+                ];
+            }
+        }
 
         return Inertia::render('properties/index', [
             'properties' => $properties
                 ->map(fn (Property $property): array => (new PropertyResource($property))->resolve())
                 ->all(),
-            'zones' => $zones,
+            'districts' => $districts,
+            'appliedDistrict' => $appliedDistrict,
             'filters' => [
                 'operation' => $filters['operation'] ?? null,
                 'type' => $filters['type'] ?? null,
-                'zone' => $filters['zone'] ?? null,
+                'district_code' => $districtCode,
             ],
         ]);
+    }
+
+    /**
+     * Districts with available properties for the public filter, identified by
+     * their province and department so homonyms stay distinguishable.
+     *
+     * @return list<array{code: string, name: string, province: string, department: string}>
+     */
+    private function catalogDistricts(): array
+    {
+        /** @var list<string> $codes */
+        $codes = Property::query()
+            ->available()
+            ->toBase()
+            ->distinct()
+            ->pluck('district_code')
+            ->all();
+
+        return array_values(
+            District::query()
+                ->whereIn('code', $codes)
+                ->with('province.department')
+                ->get()
+                ->sortBy(fn (District $district): string => Str::lower(Str::ascii(
+                    $district->name.', '.$district->province->name.' '.$district->province->department->name,
+                )))
+                ->map(fn (District $district): array => [
+                    'code' => $district->code,
+                    'name' => $district->name,
+                    'province' => $district->province->name,
+                    'department' => $district->province->department->name,
+                ])
+                ->all(),
+        );
     }
 
     public function panelIndex(PanelPropertyIndexRequest $request): Response|RedirectResponse
@@ -113,7 +159,8 @@ class PropertyController extends Controller
         $accessibleQuery = Property::query()->notArchived()->visibleTo($user);
 
         $properties = $this->applyPanelSort(
-            $this->applyPanelFilters($accessibleQuery->clone(), $filters, includeStatus: true)->with('photos'),
+            $this->applyPanelFilters($accessibleQuery->clone(), $filters, includeStatus: true)
+                ->with('photos', 'district.province.department'),
             $filters['sort'],
         )
             ->paginate(15)
@@ -155,37 +202,97 @@ class PropertyController extends Controller
         ];
         $counts['all'] = $counts['available'] + $counts['sold'] + $counts['rented'];
 
-        $locations = $accessibleQuery->clone()
-            ->toBase()
-            ->select(['city', 'zone'])
-            ->distinct()
-            ->get();
-
-        $zonesOf = fn (Collection $rows): array => $this->sortLocations(
-            $rows->pluck('zone')->map(fn (mixed $zone): string => (string) $zone)->unique(),
-        );
-
-        $zonesByCity = $locations
-            ->groupBy(fn (object $location): string => (string) $location->city)
-            ->map(fn (Collection $cityLocations): array => $zonesOf($cityLocations))
-            ->all();
-
-        $allZones = $zonesOf($locations);
         $priceRangeError = $request->priceRangeError();
 
         return Inertia::render('panel/properties/index', [
             'properties' => $properties,
             'filters' => $filters,
             'counts' => $counts,
-            'cities' => $this->sortLocations(
-                $locations->pluck('city')->map(fn (mixed $city): string => (string) $city)->unique(),
-            ),
-            'zones' => $filters['city'] === null
-                ? $allZones
-                : ($zonesByCity[$filters['city']] ?? []),
-            'zonesByCity' => $zonesByCity,
+            'locations' => $this->panelLocations($accessibleQuery),
+            'appliedLocation' => [
+                'department' => isset($filters['department_code']) ? Department::query()->find($filters['department_code'])?->name : null,
+                'province' => isset($filters['province_code']) ? Province::query()->find($filters['province_code'])?->name : null,
+                'district' => isset($filters['district_code']) ? District::query()->find($filters['district_code'])?->name : null,
+            ],
             'filterErrors' => $priceRangeError === null ? [] : ['price' => $priceRangeError],
         ]);
+    }
+
+    /**
+     * Get the locations present in the properties the user can manage.
+     *
+     * @param  Builder<Property>  $accessibleQuery
+     * @return array{
+     *     departments: list<array{code: string, name: string}>,
+     *     provinces: list<array{code: string, name: string, department_code: string}>,
+     *     districts: list<array{code: string, name: string, province_code: string, province: string}>
+     * }
+     */
+    private function panelLocations(Builder $accessibleQuery): array
+    {
+        /** @var list<string> $codes */
+        $codes = $accessibleQuery->clone()
+            ->toBase()
+            ->distinct()
+            ->pluck('district_code')
+            ->all();
+
+        $districts = District::query()
+            ->whereIn('code', $codes)
+            ->with('province.department')
+            ->get();
+
+        /** @var Collection<string, Province> $provinces */
+        $provinces = $districts
+            ->map(fn (District $district): Province => $district->province)
+            ->keyBy('code');
+
+        /** @var Collection<string, Department> $departments */
+        $departments = $provinces
+            ->map(fn (Province $province): Department => $province->department)
+            ->keyBy('code');
+
+        return [
+            'departments' => $this->sortLocationOptions(
+                $departments->map(fn (Department $department): array => [
+                    'code' => $department->code,
+                    'name' => $department->name,
+                ])->all(),
+            ),
+            'provinces' => $this->sortLocationOptions(
+                $provinces->map(fn (Province $province): array => [
+                    'code' => $province->code,
+                    'name' => $province->name,
+                    'department_code' => $province->department_code,
+                ])->all(),
+            ),
+            'districts' => $this->sortLocationOptions(
+                $districts->map(fn (District $district): array => [
+                    'code' => $district->code,
+                    'name' => $district->name,
+                    'province_code' => $district->province_code,
+                    'province' => $district->province->name,
+                ])->all(),
+            ),
+        ];
+    }
+
+    /**
+     * Order location options by name, ignoring case and accents.
+     *
+     * @template TLocation of array{name: string}
+     *
+     * @param  array<array-key, TLocation>  $options
+     * @return list<TLocation>
+     */
+    private function sortLocationOptions(array $options): array
+    {
+        usort(
+            $options,
+            fn (array $first, array $second): int => strcasecmp(Str::ascii($first['name']), Str::ascii($second['name'])),
+        );
+
+        return $options;
     }
 
     /**
@@ -197,8 +304,9 @@ class PropertyController extends Controller
      *     status: string|null,
      *     operation: string|null,
      *     type: string|null,
-     *     city: string|null,
-     *     zone: string|null,
+     *     department_code: string|null,
+     *     province_code: string|null,
+     *     district_code: string|null,
      *     currency: string|null,
      *     min_price: string|null,
      *     max_price: string|null,
@@ -225,13 +333,12 @@ class PropertyController extends Controller
             $query->where('type', $filters['type']);
         }
 
-        if ($filters['city'] !== null) {
-            $query->where('city', $filters['city']);
-        }
-
-        if ($filters['zone'] !== null) {
-            $query->where('zone', $filters['zone']);
-        }
+        $query = $this->applyPanelLocationFilters(
+            $query,
+            $filters['department_code'],
+            $filters['province_code'],
+            $filters['district_code'],
+        );
 
         if ($filters['currency'] !== null) {
             $query->where('currency', $filters['currency']);
@@ -253,6 +360,40 @@ class PropertyController extends Controller
     }
 
     /**
+     * Apply the selected location levels to the query. Each level works on its
+     * own and they can be combined.
+     *
+     * @param  Builder<Property>  $query
+     * @return Builder<Property>
+     */
+    private function applyPanelLocationFilters(
+        Builder $query,
+        ?string $department,
+        ?string $province,
+        ?string $district,
+    ): Builder {
+        if ($district !== null) {
+            $query->where('district_code', $district);
+        }
+
+        if ($province !== null) {
+            $query->whereIn('district_code', District::query()
+                ->select('code')
+                ->where('province_code', $province));
+        }
+
+        if ($department !== null) {
+            $query->whereIn('district_code', District::query()
+                ->select('code')
+                ->whereIn('province_code', Province::query()
+                    ->select('code')
+                    ->where('department_code', $department)));
+        }
+
+        return $query;
+    }
+
+    /**
      * Apply the panel ordering to the query.
      *
      * @param  Builder<Property>  $query
@@ -268,21 +409,6 @@ class PropertyController extends Controller
         };
     }
 
-    /**
-     * Sort location options ignoring case and accents.
-     *
-     * @param  Collection<int, string>  $locations
-     * @return list<string>
-     */
-    private function sortLocations(Collection $locations): array
-    {
-        return array_values(
-            $locations
-                ->sortBy(fn (string $location): string => Str::lower(Str::ascii($location)))
-                ->all(),
-        );
-    }
-
     public function archivedIndex(Request $request): Response
     {
         $user = $request->user();
@@ -290,7 +416,7 @@ class PropertyController extends Controller
         $properties = Property::query()
             ->where('status', PropertyStatus::Archived)
             ->when(! $user->isAdmin(), fn (Builder $query): Builder => $query->whereBelongsTo($user))
-            ->with('photos')
+            ->with('photos', 'district.province.department')
             ->latest('id')
             ->get();
 
@@ -561,7 +687,7 @@ class PropertyController extends Controller
         /** @var array<int, UploadedFile> $photos */
         $photos = $validated['photos'];
 
-        unset($validated['photos']);
+        unset($validated['photos'], $validated['department_code'], $validated['province_code']);
 
         $user = $request->user();
 
@@ -590,7 +716,7 @@ class PropertyController extends Controller
         /** @var array<int, UploadedFile> $newPhotos */
         $newPhotos = array_values((array) ($validated['photos'] ?? []));
 
-        unset($validated['photo_order'], $validated['photos']);
+        unset($validated['photo_order'], $validated['photos'], $validated['department_code'], $validated['province_code']);
 
         $directory = (string) config('properties.photos_directory');
         $disk = (string) config('properties.photos_disk');
@@ -656,7 +782,7 @@ class PropertyController extends Controller
 
     public function show(Property $property): Response
     {
-        $property->load('photos');
+        $property->load('photos', 'district.province.department');
 
         return Inertia::render('properties/show', [
             'property' => (new PropertyResource($property))->resolve(),

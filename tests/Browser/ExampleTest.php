@@ -19,8 +19,7 @@ class ExampleTest extends DuskTestCase
             'title' => 'Casa frente al parque',
             'price' => 250000,
             'currency' => 'PEN',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
         ]);
 
         $url = route('properties.show', $property);
@@ -29,7 +28,7 @@ class ExampleTest extends DuskTestCase
             $browser->visit('/')
                 ->waitForText($property->title)
                 ->assertSee('Conoce algunas de nuestras propiedades en venta y alquiler.')
-                ->assertSee('Lima · Miraflores')
+                ->assertSee('Miraflores, Lima · Lima')
                 ->assertSee('S/ 250,000')
                 ->click('a[href="'.$url.'"]')
                 ->waitForLocation(parse_url($url, PHP_URL_PATH))

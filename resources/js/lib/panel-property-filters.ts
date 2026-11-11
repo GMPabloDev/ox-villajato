@@ -1,5 +1,11 @@
 import type { PropertyStatusValue } from '@/components/property-status-badge';
 import {
+    provincesForDepartment,
+    type UbigeoDepartment,
+    type UbigeoDistrict,
+    type UbigeoProvince,
+} from '@/lib/ubigeo';
+import {
     type PropertyCurrencyValue,
     type PropertyOperationValue,
     type PropertyTypeValue,
@@ -17,8 +23,9 @@ export type PanelPropertyFiltersValue = {
     status: PanelPropertyStatusFilter | null;
     operation: PropertyOperationValue | null;
     type: PropertyTypeValue | null;
-    city: string | null;
-    zone: string | null;
+    department_code: string | null;
+    province_code: string | null;
+    district_code: string | null;
     currency: PropertyCurrencyValue | null;
     min_price: string | null;
     max_price: string | null;
@@ -26,7 +33,29 @@ export type PanelPropertyFiltersValue = {
     sort: PanelPropertySort;
 };
 
-export type PanelPropertyZonesByCity = Record<string, string[]>;
+/**
+ * District offered by the panel, with its province name so districts that share
+ * a name stay distinguishable while no province is chosen.
+ */
+export type PanelDistrict = UbigeoDistrict & {
+    province: string;
+};
+
+/**
+ * Locations the panel may offer. They come from the properties the user can
+ * manage, never from the whole catalog or from another agent's inventory.
+ */
+export type PanelLocationOptions = {
+    departments: UbigeoDepartment[];
+    provinces: UbigeoProvince[];
+    districts: PanelDistrict[];
+};
+
+export type PanelLocationCodes = {
+    department_code: string | null;
+    province_code: string | null;
+    district_code: string | null;
+};
 
 export const panelPropertySortOptions: {
     value: PanelPropertySort;
@@ -74,12 +103,16 @@ export function panelFiltersToQuery(
         query.type = filters.type;
     }
 
-    if (filters.city !== null) {
-        query.city = filters.city;
+    if (filters.department_code !== null) {
+        query.department_code = filters.department_code;
     }
 
-    if (filters.zone !== null) {
-        query.zone = filters.zone;
+    if (filters.province_code !== null) {
+        query.province_code = filters.province_code;
+    }
+
+    if (filters.district_code !== null) {
+        query.district_code = filters.district_code;
     }
 
     if (filters.currency !== null) {
@@ -113,8 +146,9 @@ export function hasActivePanelFilters(
         filters.status !== null ||
         filters.operation !== null ||
         filters.type !== null ||
-        filters.city !== null ||
-        filters.zone !== null ||
+        filters.department_code !== null ||
+        filters.province_code !== null ||
+        filters.district_code !== null ||
         filters.currency !== null ||
         filters.min_price !== null ||
         filters.max_price !== null ||
@@ -122,45 +156,75 @@ export function hasActivePanelFilters(
     );
 }
 
-function compareText(first: string, second: string): number {
-    return first.localeCompare(second, 'es', { sensitivity: 'base' });
-}
-
-export function sortLocations(locations: string[]): string[] {
-    return [...locations].sort(compareText);
+/**
+ * Provinces offered for a department. Without a department the panel offers
+ * every accessible province, so each level can filter on its own.
+ */
+export function panelProvinces(
+    locations: PanelLocationOptions,
+    departmentCode: string | null,
+): UbigeoProvince[] {
+    return departmentCode === null
+        ? locations.provinces
+        : provincesForDepartment(locations, departmentCode);
 }
 
 /**
- * Zones that belong to a city. A null city lists every accessible zone.
+ * Districts offered for a department and a province. A chosen province limits
+ * them to its own districts; a department without a province keeps only the
+ * districts that belong to it.
  */
-export function zonesForCity(
-    zonesByCity: PanelPropertyZonesByCity,
-    city: string | null,
-): string[] {
-    if (city === null) {
-        return sortLocations([
-            ...new Set(Object.values(zonesByCity).flatMap((zones) => zones)),
-        ]);
+export function panelDistricts(
+    locations: PanelLocationOptions,
+    departmentCode: string | null,
+    provinceCode: string | null,
+): PanelDistrict[] {
+    if (provinceCode !== null) {
+        return locations.districts.filter(
+            (district) => district.province_code === provinceCode,
+        );
     }
 
-    const zones = Object.hasOwn(zonesByCity, city)
-        ? zonesByCity[city]
-        : undefined;
+    if (departmentCode === null) {
+        return locations.districts;
+    }
 
-    return Array.isArray(zones) ? zones : [];
+    const provinceCodes = provincesForDepartment(locations, departmentCode).map(
+        (province) => province.code,
+    );
+
+    return locations.districts.filter((district) =>
+        provinceCodes.includes(district.province_code),
+    );
 }
 
 /**
- * Keep a value that only exists in the URL visible in a select that lists the
- * current options.
+ * Drop the chosen levels that no longer belong to the level above, so the
+ * controls never show a province or a district from another parent.
  */
-export function withCurrentValue(
-    options: string[],
-    currentValue: string | null,
-): string[] {
-    if (currentValue === null || options.includes(currentValue)) {
-        return options;
-    }
+export function reconcilePanelLocation(
+    locations: PanelLocationOptions,
+    selection: PanelLocationCodes,
+): PanelLocationCodes {
+    const province =
+        selection.province_code !== null &&
+        panelProvinces(locations, selection.department_code).some(
+            (option) => option.code === selection.province_code,
+        )
+            ? selection.province_code
+            : null;
 
-    return sortLocations([...options, currentValue]);
+    const district =
+        selection.district_code !== null &&
+        panelDistricts(locations, selection.department_code, province).some(
+            (option) => option.code === selection.district_code,
+        )
+            ? selection.district_code
+            : null;
+
+    return {
+        department_code: selection.department_code,
+        province_code: province,
+        district_code: district,
+    };
 }

@@ -30,12 +30,13 @@ import {
     isPanelPropertySort,
     isPriceSort,
     PANEL_PRICE_RANGE_ERROR,
+    panelDistricts,
     panelPropertySortOptions,
+    panelProvinces,
+    reconcilePanelLocation,
+    type PanelLocationOptions,
     type PanelPropertyFiltersValue,
     type PanelPropertyStatusFilter,
-    type PanelPropertyZonesByCity,
-    withCurrentValue,
-    zonesForCity,
 } from '@/lib/panel-property-filters';
 import {
     propertyCurrencyOptions,
@@ -64,8 +65,9 @@ type DraftFilters = {
     operation: string;
     type: string;
     status: string;
-    city: string;
-    zone: string;
+    department: string;
+    province: string;
+    district: string;
     currency: string;
     min_price: string;
     max_price: string;
@@ -74,8 +76,6 @@ type DraftFilters = {
 
 const ALL = 'all';
 const ANY = 'any';
-const locationValue = (value: string) => `location:${value}`;
-const locationFromValue = (value: string) => value.slice('location:'.length);
 
 const operationOptions: SelectOption[] = propertyOperationOptions.map(
     (option) => ({ ...option }),
@@ -150,21 +150,17 @@ function useHydrated(): boolean {
 
 function draftFromFilters(
     filters: PanelPropertyFiltersValue,
-    zonesByCity: PanelPropertyZonesByCity,
+    _locations: PanelLocationOptions,
 ): DraftFilters {
-    const zone =
-        filters.city !== null &&
-        filters.zone !== null &&
-        !zonesForCity(zonesByCity, filters.city).includes(filters.zone)
-            ? null
-            : filters.zone;
+    const location = filters;
 
     return {
         operation: filters.operation ?? ALL,
         type: filters.type ?? ALL,
         status: filters.status ?? ALL,
-        city: filters.city === null ? ALL : locationValue(filters.city),
-        zone: zone === null ? ALL : locationValue(zone),
+        department: location.department_code ?? ALL,
+        province: location.province_code ?? ALL,
+        district: location.district_code ?? ALL,
         currency: filters.currency ?? ALL,
         min_price: filters.min_price ?? '',
         max_price: filters.max_price ?? '',
@@ -215,8 +211,9 @@ function draftToFilters(
             draft.status === ALL
                 ? null
                 : (draft.status as PanelPropertyStatusFilter),
-        city: draft.city === ALL ? null : locationFromValue(draft.city),
-        zone: draft.zone === ALL ? null : locationFromValue(draft.zone),
+        department_code: draft.department === ALL ? null : draft.department,
+        province_code: draft.province === ALL ? null : draft.province,
+        district_code: draft.district === ALL ? null : draft.district,
         currency,
         min_price: currency === null ? null : emptyToNull(draft.min_price),
         max_price: currency === null ? null : emptyToNull(draft.max_price),
@@ -327,6 +324,7 @@ function QuickFilter({
                             <SelectItem
                                 key={option.value}
                                 value={option.value}
+                                disabled={option.disabled}
                                 className="text-xs"
                             >
                                 {option.label}
@@ -344,15 +342,19 @@ function QuickFilter({
 export function PanelPropertyFilters({
     filters,
     counts,
-    cities,
-    zonesByCity,
+    locations,
+    appliedLocation,
     priceRangeError = null,
     onApply,
 }: {
     filters: PanelPropertyFiltersValue;
     counts: PanelPropertyCounts;
-    cities: string[];
-    zonesByCity: PanelPropertyZonesByCity;
+    locations: PanelLocationOptions;
+    appliedLocation: {
+        department: string | null;
+        province: string | null;
+        district: string | null;
+    };
     priceRangeError?: string | null;
     onApply: (filters: PanelPropertyFiltersValue) => void;
 }) {
@@ -360,7 +362,7 @@ export function PanelPropertyFilters({
     const [isFiltersOpen, setIsFiltersOpen] = useState(false);
     const [searchValue, setSearchValue] = useState(filters.search ?? '');
     const [draft, setDraft] = useState<DraftFilters>(() =>
-        draftFromFilters(filters, zonesByCity),
+        draftFromFilters(filters, locations),
     );
     const [priceError, setPriceError] = useState<string | null>(null);
 
@@ -376,40 +378,112 @@ export function PanelPropertyFilters({
     ];
     const activeStatus = filters.status ?? ALL;
 
-    const cityOptions: SelectOption[] = [
-        { value: ALL, label: 'Todas las ciudades' },
-        ...withCurrentValue(cities, filters.city).map((city) => ({
-            value: locationValue(city),
-            label: city,
+    const departmentOptions: SelectOption[] = [
+        { value: ALL, label: 'Todos los departamentos' },
+        ...locations.departments.map((department) => ({
+            value: department.code,
+            label: department.name,
         })),
     ];
 
-    const draftCityOptions: SelectOption[] = [
-        { value: ALL, label: 'Todas las ciudades' },
-        ...withCurrentValue(
-            cities,
-            draft.city === ALL ? null : locationFromValue(draft.city),
-        ).map((city) => ({
-            value: locationValue(city),
-            label: city,
+    const draftProvinceOptions: SelectOption[] = [
+        { value: ALL, label: 'Todas las provincias' },
+        ...panelProvinces(
+            locations,
+            draft.department === ALL ? null : draft.department,
+        ).map((province) => ({
+            value: province.code,
+            label: province.name,
         })),
     ];
 
-    const draftZoneOptions: SelectOption[] = [
-        { value: ALL, label: 'Todas las zonas' },
-        ...withCurrentValue(
-            zonesForCity(
-                zonesByCity,
-                draft.city === ALL ? null : locationFromValue(draft.city),
-            ),
-            draft.city === ALL && draft.zone !== ALL
-                ? locationFromValue(draft.zone)
-                : null,
-        ).map((zone) => ({
-            value: locationValue(zone),
-            label: zone,
+    const draftDistrictOptions: SelectOption[] = [
+        { value: ALL, label: 'Todos los distritos' },
+        ...panelDistricts(
+            locations,
+            draft.department === ALL ? null : draft.department,
+            draft.province === ALL ? null : draft.province,
+        ).map((district) => ({
+            value: district.code,
+            label:
+                draft.province === ALL
+                    ? `${district.name} (${district.province})`
+                    : district.name,
         })),
     ];
+
+    function preserveCurrentOption(
+        options: SelectOption[],
+        value: string,
+        label: string,
+        name: string | null,
+    ) {
+        if (
+            value !== ALL &&
+            !options.some((option) => option.value === value)
+        ) {
+            options.push({
+                value,
+                label: `${label} ${name ?? value} (filtro actual)`,
+                disabled: true,
+            });
+        }
+    }
+
+    preserveCurrentOption(
+        departmentOptions,
+        filters.department_code ?? ALL,
+        'Departamento',
+        appliedLocation.department,
+    );
+    preserveCurrentOption(
+        departmentOptions,
+        draft.department,
+        'Departamento',
+        draft.department === filters.department_code
+            ? appliedLocation.department
+            : null,
+    );
+    preserveCurrentOption(
+        draftProvinceOptions,
+        draft.province,
+        'Provincia',
+        draft.province === filters.province_code
+            ? appliedLocation.province
+            : null,
+    );
+    preserveCurrentOption(
+        draftDistrictOptions,
+        draft.district,
+        'Distrito',
+        draft.district === filters.district_code
+            ? appliedLocation.district
+            : null,
+    );
+
+    const unavailableLocationFilters = [
+        {
+            code: filters.department_code,
+            label: 'Departamento',
+            name: appliedLocation.department,
+            options: locations.departments,
+        },
+        {
+            code: filters.province_code,
+            label: 'Provincia',
+            name: appliedLocation.province,
+            options: locations.provinces,
+        },
+        {
+            code: filters.district_code,
+            label: 'Distrito',
+            name: appliedLocation.district,
+            options: locations.districts,
+        },
+    ].filter(
+        ({ code, options }) =>
+            code !== null && !options.some((option) => option.code === code),
+    );
 
     const sortOptions: SelectOption[] = panelPropertySortOptions.map(
         (option) => ({
@@ -472,17 +546,17 @@ export function PanelPropertyFilters({
         });
     }
 
-    function applyCity(city: string) {
-        const nextCity = city === ALL ? null : locationFromValue(city);
-        const keepZone =
-            filters.zone !== null &&
-            zonesForCity(zonesByCity, nextCity).includes(filters.zone);
+    function applyDepartment(department: string) {
+        const location = reconcilePanelLocation(locations, {
+            department_code: department === ALL ? null : department,
+            province_code: filters.province_code,
+            district_code: filters.district_code,
+        });
 
         onApply({
             ...filters,
             search: pendingSearch(),
-            city: nextCity,
-            zone: keepZone ? filters.zone : null,
+            ...location,
         });
     }
 
@@ -504,7 +578,7 @@ export function PanelPropertyFilters({
         setIsFiltersOpen(open);
 
         if (open) {
-            setDraft(draftFromFilters(filters, zonesByCity));
+            setDraft(draftFromFilters(filters, locations));
             setPriceError(priceRangeError);
         }
     }
@@ -514,19 +588,30 @@ export function PanelPropertyFilters({
         setPriceError(null);
     }
 
-    function changeDraftCity(city: string) {
+    function changeDraftDepartment(department: string) {
+        setDraft((current) => ({
+            ...current,
+            department,
+            province: ALL,
+            district: ALL,
+        }));
+        setPriceError(null);
+    }
+
+    function changeDraftProvince(province: string) {
         setDraft((current) => {
-            const keepZone =
-                current.zone !== ALL &&
-                zonesForCity(
-                    zonesByCity,
-                    city === ALL ? null : locationFromValue(city),
-                ).includes(locationFromValue(current.zone));
+            const keepDistrict =
+                current.district !== ALL &&
+                panelDistricts(
+                    locations,
+                    current.department === ALL ? null : current.department,
+                    province === ALL ? null : province,
+                ).some((district) => district.code === current.district);
 
             return {
                 ...current,
-                city,
-                zone: keepZone ? current.zone : ALL,
+                province,
+                district: keepDistrict ? current.district : ALL,
             };
         });
         setPriceError(null);
@@ -628,7 +713,7 @@ export function PanelPropertyFilters({
                 >
                     <Search className="size-4 shrink-0" aria-hidden="true" />
                     <label htmlFor="panel-property-search" className="sr-only">
-                        Buscar por título, ciudad o zona
+                        Buscar por título, departamento, provincia o distrito
                     </label>
                     <Input
                         id="panel-property-search"
@@ -637,7 +722,7 @@ export function PanelPropertyFilters({
                         value={searchValue}
                         onChange={(event) => changeSearch(event.target.value)}
                         autoComplete="off"
-                        placeholder="Buscar por título, ciudad o zona…"
+                        placeholder="Buscar por título, departamento, provincia o distrito…"
                         className="h-9 border-0 bg-transparent px-0 text-xs text-foreground shadow-none focus-visible:ring-0"
                     />
                     <kbd
@@ -748,20 +833,27 @@ export function PanelPropertyFilters({
                                     Ubicación
                                 </legend>
 
-                                <div className="grid grid-cols-2 gap-3">
+                                <div className="grid gap-3">
                                     <FilterSelect
-                                        label="Ciudad"
-                                        value={draft.city}
-                                        options={draftCityOptions}
-                                        onValueChange={changeDraftCity}
+                                        label="Departamento"
+                                        value={draft.department}
+                                        options={departmentOptions}
+                                        onValueChange={changeDraftDepartment}
                                     />
 
                                     <FilterSelect
-                                        label="Zona"
-                                        value={draft.zone}
-                                        options={draftZoneOptions}
+                                        label="Provincia"
+                                        value={draft.province}
+                                        options={draftProvinceOptions}
+                                        onValueChange={changeDraftProvince}
+                                    />
+
+                                    <FilterSelect
+                                        label="Distrito"
+                                        value={draft.district}
+                                        options={draftDistrictOptions}
                                         onValueChange={(value) =>
-                                            updateDraft({ zone: value })
+                                            updateDraft({ district: value })
                                         }
                                     />
                                 </div>
@@ -908,6 +1000,18 @@ export function PanelPropertyFilters({
                 </div>
             </div>
 
+            {unavailableLocationFilters.length > 0 && (
+                <p className="px-4 pb-2 text-xs text-muted-foreground md:px-6">
+                    Filtros de ubicación actuales:{' '}
+                    {unavailableLocationFilters
+                        .map(
+                            ({ label, code, name }) =>
+                                `${label} ${name ?? code}`,
+                        )
+                        .join(', ')}
+                </p>
+            )}
+
             <div className="flex flex-wrap items-center gap-2 px-4 pb-4 md:px-6">
                 <QuickFilter
                     label="Operación"
@@ -930,17 +1034,13 @@ export function PanelPropertyFilters({
                 />
 
                 <QuickFilter
-                    label="Ciudad"
-                    value={
-                        filters.city === null
-                            ? ALL
-                            : locationValue(filters.city)
-                    }
-                    options={cityOptions}
+                    label="Departamento"
+                    value={filters.department_code ?? ALL}
+                    options={departmentOptions}
                     isReady={isHydrated}
                     skeletonClassName="w-[141px]"
                     className="hidden sm:flex"
-                    onValueChange={applyCity}
+                    onValueChange={applyDepartment}
                 />
             </div>
         </>

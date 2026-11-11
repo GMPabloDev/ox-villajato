@@ -25,26 +25,19 @@ class PanelPropertyFiltersTest extends DuskTestCase
 
     private const LIST_SELECTOR = 'ul[aria-label="Propiedades"] > li';
 
-    public function test_special_city_names_render_and_keep_legitimate_zones(): void
+    public function test_unavailable_applied_location_stays_visible_in_filters(): void
     {
         $agent = User::factory()->agent()->create();
-        Property::factory()->for($agent)->create(['title' => 'Casa Lima', 'city' => 'Lima']);
+        Property::factory()->for($agent)->create(['district_code' => '150122']);
 
         $this->browse(function (Browser $browser) use ($agent): void {
-            $browser->loginAs($agent)
-                ->visit(route('panel.properties.index', ['city' => 'constructor']))
-                ->waitForText('No hay propiedades que coincidan')
-                ->assertSee('No hay propiedades que coincidan');
-        });
-
-        Property::factory()->for($agent)->create(['title' => 'Casa especial', 'city' => 'constructor', 'zone' => 'Centro']);
-        $this->browse(function (Browser $browser): void {
-            $browser->visit(route('panel.properties.index', ['city' => 'constructor']))
-                ->waitForText('Casa especial')
-                ->assertSee('Casa especial');
-            $this->openFiltersPanel($browser);
-            $browser->click('[role="dialog"] [aria-label="Zona"]')->waitFor('[role="listbox"]')
-                ->assertSeeIn('[role="listbox"]', 'Centro');
+            $browser->loginAs($agent)->visit(route('panel.properties.index', [
+                'department_code' => '04', 'province_code' => '0401', 'district_code' => '040126',
+            ]))->waitFor('[aria-label="Departamento"]')
+                ->waitForText('Departamento Arequipa (filtro actual)')
+                ->assertSee('Departamento Arequipa (filtro actual)')
+                ->assertSee('Provincia Arequipa')
+                ->assertSee('Distrito Yanahuara');
         });
     }
 
@@ -292,19 +285,33 @@ class PanelPropertyFiltersTest extends DuskTestCase
         });
     }
 
-    public function test_zones_shared_by_cities_appear_only_once_without_a_city_filter(): void
+    public function test_districts_with_the_same_name_are_identified_by_their_province_until_one_is_chosen(): void
     {
         $agent = User::factory()->agent()->create();
-        Property::factory()->for($agent)->create(['city' => 'Lima', 'zone' => 'Centro']);
-        Property::factory()->for($agent)->create(['city' => 'Arequipa', 'zone' => 'Centro']);
+        Property::factory()->for($agent)->create(['district_code' => '080106']);
+        Property::factory()->for($agent)->create(['district_code' => '110111']);
 
         $this->browse(function (Browser $browser) use ($agent): void {
             $browser->loginAs($agent)->visit(route('panel.properties.index'))
-                ->waitFor('[aria-label="Ciudad"]');
+                ->waitFor('[aria-label="Departamento"]');
             $this->openFiltersPanel($browser);
-            $browser->click('[role="dialog"] [aria-label="Zona"]')->waitFor('[role="listbox"]');
-            $options = $browser->driver->findElements(WebDriverBy::xpath("//div[@role='option'][normalize-space(.)='Centro']"));
-            $this->assertCount(1, $options);
+
+            $browser->click('[role="dialog"] [aria-label="Distrito"]')->waitFor('[role="listbox"]')
+                ->assertSeeIn('[role="listbox"]', 'Santiago (Cusco)')
+                ->assertSeeIn('[role="listbox"]', 'Santiago (Ica)');
+
+            $this->selectVisibleOption($browser, 'Santiago (Ica)');
+            $browser->press('Mostrar resultados')
+                ->waitUntilMissing('[role="dialog"]');
+
+            $this->assertStringContainsString('district_code=110111', $browser->driver->getCurrentURL());
+
+            $this->openFiltersPanel($browser);
+
+            $this->selectOption($browser, '[role="dialog"] [aria-label="Provincia"]', 'Ica');
+            $browser->click('[role="dialog"] [aria-label="Distrito"]')->waitFor('[role="listbox"]')
+                ->assertSeeIn('[role="listbox"]', 'Santiago')
+                ->assertDontSeeIn('[role="listbox"]', 'Santiago (Cusco)');
         });
     }
 
@@ -314,13 +321,11 @@ class PanelPropertyFiltersTest extends DuskTestCase
 
         Property::factory()->for($agent)->create([
             'title' => 'Casa en Jesús María',
-            'city' => 'Lima',
-            'zone' => 'Jesús María',
+            'district_code' => '150122',
         ]);
         Property::factory()->for($agent)->create([
             'title' => 'Departamento en Barranco',
-            'city' => 'Lima',
-            'zone' => 'Barranco',
+            'district_code' => '150104',
         ]);
 
         $this->browse(function (Browser $browser) use ($agent): void {
@@ -388,58 +393,96 @@ class PanelPropertyFiltersTest extends DuskTestCase
         });
     }
 
-    public function test_location_controls_accept_all_and_any_as_real_names(): void
+    public function test_location_filters_from_the_url_are_applied_and_shown_in_the_controls(): void
     {
         $agent = User::factory()->agent()->create();
-        Property::factory()->for($agent)->create(['title' => 'Propiedad especial', 'city' => 'all', 'zone' => 'any']);
-        Property::factory()->for($agent)->create(['title' => 'Otra propiedad', 'city' => 'Lima', 'zone' => 'Surco']);
+        Property::factory()->for($agent)->create([
+            'title' => 'Casa en Lima',
+            'district_code' => '150122',
+        ]);
+        Property::factory()->for($agent)->create([
+            'title' => 'Casa en Yanahuara',
+            'district_code' => '040126',
+        ]);
 
         $this->browse(function (Browser $browser) use ($agent): void {
-            $browser->loginAs($agent)->visit(route('panel.properties.index'))->waitForText('Otra propiedad');
-            $this->selectOption($browser, '[aria-label="Ciudad"]', 'all');
-            $browser->waitUntilMissingText('Otra propiedad')->assertSee('Propiedad especial');
+            $browser->loginAs($agent)->visit(route('panel.properties.index', [
+                'department_code' => '04',
+                'province_code' => '0401',
+                'district_code' => '040126',
+            ]))
+                ->waitForText('Casa en Yanahuara')
+                ->assertDontSee('Casa en Lima')
+                ->assertCount(self::LIST_SELECTOR, 1)
+                ->assertSeeIn('[aria-label="Departamento"]', 'Arequipa');
+
             $this->openFiltersPanel($browser);
-            $this->selectOption($browser, '[role="dialog"] [aria-label="Zona"]', 'any');
-            $browser->press('Mostrar resultados')->waitUntilMissing('[role="dialog"]')->assertSee('Propiedad especial');
-            $this->assertStringContainsString('city=all', $browser->driver->getCurrentURL());
-            $this->assertStringContainsString('zone=any', $browser->driver->getCurrentURL());
+
+            $browser->assertSeeIn('[role="dialog"] [aria-label="Departamento"]', 'Arequipa')
+                ->assertSeeIn('[role="dialog"] [aria-label="Provincia"]', 'Arequipa')
+                ->assertSeeIn('[role="dialog"] [aria-label="Distrito"]', 'Yanahuara');
         });
     }
 
-    public function test_incompatible_zone_from_url_is_not_offered_for_the_city(): void
+    public function test_an_incompatible_location_from_the_url_is_cleared_and_not_applied(): void
     {
         $agent = User::factory()->agent()->create();
-        Property::factory()->for($agent)->create(['city' => 'Lima', 'zone' => 'Surco']);
-        Property::factory()->for($agent)->create(['city' => 'Arequipa', 'zone' => 'Yanahuara']);
+        Property::factory()->for($agent)->create([
+            'title' => 'Casa en Lima',
+            'district_code' => '150122',
+        ]);
+        Property::factory()->for($agent)->create([
+            'title' => 'Casa en Yanahuara',
+            'district_code' => '040126',
+        ]);
 
         $this->browse(function (Browser $browser) use ($agent): void {
-            $browser->loginAs($agent)->visit(route('panel.properties.index', ['city' => 'Lima', 'zone' => 'Yanahuara']))
-                ->waitForText('No hay propiedades que coincidan');
+            $url = route('panel.properties.index', [
+                'department_code' => '15',
+                'province_code' => '0401',
+                'district_code' => '040126',
+            ]);
+
+            $browser->loginAs($agent)->visit($url)
+                ->waitForText('Casa en Lima')
+                ->assertDontSee('Casa en Yanahuara')
+                ->assertCount(self::LIST_SELECTOR, 1);
+
             $this->openFiltersPanel($browser);
-            $browser->click('[role="dialog"] [aria-label="Zona"]')->waitFor('[role="listbox"]')
-                ->assertSeeIn('[role="listbox"]', 'Surco')
+
+            $browser->assertSeeIn('[role="dialog"] [aria-label="Departamento"]', 'Lima')
+                ->assertSeeIn('[role="dialog"] [aria-label="Provincia"]', 'Todas las provincias')
+                ->assertSeeIn('[role="dialog"] [aria-label="Distrito"]', 'Todos los distritos');
+
+            $browser->click('[role="dialog"] [aria-label="Distrito"]')->waitFor('[role="listbox"]')
+                ->assertSeeIn('[role="listbox"]', 'Miraflores (Lima)')
                 ->assertDontSeeIn('[role="listbox"]', 'Yanahuara');
+
+            $this->selectVisibleOption($browser, 'Todos los distritos');
+            $browser->press('Cerrar')->waitUntilMissing('[role="dialog"]');
+
+            $browser->refresh()
+                ->waitForText('Casa en Lima')
+                ->assertDontSee('Casa en Yanahuara')
+                ->assertCount(self::LIST_SELECTOR, 1);
         });
     }
 
-    public function test_the_city_limits_the_zones_and_clears_a_zone_from_another_city(): void
+    public function test_the_department_limits_the_provinces_and_districts_and_clears_incompatible_choices(): void
     {
         $agent = User::factory()->agent()->create();
 
         Property::factory()->for($agent)->create([
             'title' => 'Casa en Miraflores',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
         ]);
         Property::factory()->for($agent)->create([
-            'title' => 'Casa en Surco',
-            'city' => 'Lima',
-            'zone' => 'Surco',
+            'title' => 'Casa en Barranco',
+            'district_code' => '150104',
         ]);
         Property::factory()->for($agent)->create([
             'title' => 'Casa en Yanahuara',
-            'city' => 'Arequipa',
-            'zone' => 'Yanahuara',
+            'district_code' => '040126',
         ]);
 
         $this->browse(function (Browser $browser) use ($agent): void {
@@ -447,59 +490,61 @@ class PanelPropertyFiltersTest extends DuskTestCase
                 ->visit(route('panel.properties.index'))
                 ->waitForText('Casa en Yanahuara');
 
-            $this->selectOption($browser, '[aria-label="Ciudad"]', 'Lima');
+            $this->selectOption($browser, '[aria-label="Departamento"]', 'Lima');
 
             $browser->waitUntilMissingText('Casa en Yanahuara')
                 ->assertCount(self::LIST_SELECTOR, 2);
 
             $this->openFiltersPanel($browser);
 
-            $this->selectOption($browser, '[role="dialog"] [aria-label="Zona"]', 'Miraflores');
+            $this->selectOption($browser, '[role="dialog"] [aria-label="Provincia"]', 'Lima');
+            $this->selectOption($browser, '[role="dialog"] [aria-label="Distrito"]', 'Barranco');
 
             $browser->press('Mostrar resultados')
-                ->waitUntilMissingText('Casa en Surco')
-                ->assertSee('Casa en Miraflores')
+                ->waitUntilMissingText('Casa en Miraflores')
+                ->assertSee('Casa en Barranco')
                 ->assertCount(self::LIST_SELECTOR, 1);
 
-            $this->selectOption($browser, '[aria-label="Ciudad"]', 'Arequipa');
-
-            $browser->waitUntilMissingText('Casa en Miraflores')
-                ->assertSee('Casa en Yanahuara');
-
             $url = $browser->driver->getCurrentURL();
-            $this->assertStringContainsString('city=Arequipa', $url);
-            $this->assertStringNotContainsString('zone=', $url);
+            $this->assertStringContainsString('department_code=15', $url);
+            $this->assertStringContainsString('province_code=1501', $url);
+            $this->assertStringContainsString('district_code=150104', $url);
 
             $this->openFiltersPanel($browser);
+            $this->selectOption($browser, '[role="dialog"] [aria-label="Departamento"]', 'Arequipa');
 
-            $this->selectOption($browser, '[role="dialog"] [aria-label="Ciudad"]', 'Lima');
+            $browser->assertSeeIn('[role="dialog"] [aria-label="Provincia"]', 'Todas las provincias')
+                ->assertSeeIn('[role="dialog"] [aria-label="Distrito"]', 'Todos los distritos');
 
-            $browser->assertSeeIn('[role="dialog"] [aria-label="Zona"]', 'Todas las zonas');
+            $browser->click('[role="dialog"] [aria-label="Provincia"]')->waitFor('[role="listbox"]')
+                ->assertSeeIn('[role="listbox"]', 'Arequipa')
+                ->assertDontSeeIn('[role="listbox"]', 'Lima');
 
-            $this->selectOption($browser, '[role="dialog"] [aria-label="Zona"]', 'Miraflores');
-
-            $browser->assertSeeIn('[role="dialog"] [aria-label="Zona"]', 'Miraflores');
-
-            $this->selectOption($browser, '[role="dialog"] [aria-label="Ciudad"]', 'Arequipa');
-
-            $browser->assertSeeIn('[role="dialog"] [aria-label="Zona"]', 'Todas las zonas');
-
-            $browser->click('[role="dialog"] [aria-label="Zona"]')
-                ->waitFor('[role="listbox"]')
+            $this->selectVisibleOption($browser, 'Arequipa');
+            $browser->click('[role="dialog"] [aria-label="Distrito"]')->waitFor('[role="listbox"]')
                 ->assertSeeIn('[role="listbox"]', 'Yanahuara')
-                ->assertDontSeeIn('[role="listbox"]', 'Miraflores');
+                ->assertDontSeeIn('[role="listbox"]', 'Barranco');
 
-            $this->selectVisibleOption($browser, 'Todas las zonas');
-
-            $browser->press('Cerrar')
+            $this->selectVisibleOption($browser, 'Yanahuara');
+            $browser->press('Mostrar resultados')
                 ->waitUntilMissing('[role="dialog"]')
                 ->assertSee('Casa en Yanahuara')
                 ->assertCount(self::LIST_SELECTOR, 1);
 
-            $this->assertStringContainsString(
-                'city=Arequipa',
-                $browser->driver->getCurrentURL(),
-            );
+            $url = $browser->driver->getCurrentURL();
+            $this->assertStringContainsString('department_code=04', $url);
+            $this->assertStringContainsString('district_code=040126', $url);
+            $this->assertStringNotContainsString('district_code=150104', $url);
+
+            $this->selectOption($browser, '[aria-label="Departamento"]', 'Lima');
+
+            $browser->waitUntilMissingText('Casa en Yanahuara')
+                ->assertCount(self::LIST_SELECTOR, 2);
+
+            $url = $browser->driver->getCurrentURL();
+            $this->assertStringContainsString('department_code=15', $url);
+            $this->assertStringNotContainsString('province_code=', $url);
+            $this->assertStringNotContainsString('district_code=', $url);
         });
     }
 
@@ -510,15 +555,13 @@ class PanelPropertyFiltersTest extends DuskTestCase
         foreach (range(1, 16) as $index) {
             Property::factory()->for($agent)->create([
                 'title' => "Casa en Lima {$index}",
-                'city' => 'Lima',
-                'zone' => 'Miraflores',
+                'district_code' => '150122',
             ]);
         }
 
         Property::factory()->for($agent)->create([
             'title' => 'Casa en Cusco',
-            'city' => 'Cusco',
-            'zone' => 'Wanchaq',
+            'district_code' => '080106',
         ]);
 
         $this->browse(function (Browser $browser) use ($agent): void {
@@ -535,15 +578,43 @@ class PanelPropertyFiltersTest extends DuskTestCase
                 ->waitForText('Mostrando 16 a 17 de 17 propiedades')
                 ->assertCount(self::LIST_SELECTOR, 2);
 
-            $this->selectOption($browser, '[aria-label="Ciudad"]', 'Lima');
+            $this->selectOption($browser, '[aria-label="Departamento"]', 'Lima');
 
             $browser->waitUntilMissingText('Casa en Cusco')
                 ->waitForText('Mostrando 1 a 15 de 16 propiedades')
                 ->assertCount(self::LIST_SELECTOR, 15);
 
             $url = $browser->driver->getCurrentURL();
-            $this->assertStringContainsString('city=Lima', $url);
+            $this->assertStringContainsString('department_code=15', $url);
             $this->assertStringNotContainsString('page=', $url);
+        });
+    }
+
+    public function test_search_finds_properties_by_location_names_ignoring_case_and_accents(): void
+    {
+        $agent = User::factory()->agent()->create();
+        Property::factory()->for($agent)->create([
+            'title' => 'Lote uno',
+            'district_code' => '040126',
+        ]);
+        Property::factory()->for($agent)->create([
+            'title' => 'Lote dos',
+            'district_code' => '150502',
+        ]);
+
+        $this->browse(function (Browser $browser) use ($agent): void {
+            $browser->loginAs($agent)->visit(route('panel.properties.index'))
+                ->waitForText('Lote dos');
+
+            foreach ([
+                'yanahuara' => 'Lote uno',
+                'AREQUIPA' => 'Lote uno',
+                'CAÑETE' => 'Lote dos',
+            ] as $term => $expectedTitle) {
+                $browser->visit(route('panel.properties.index', ['search' => $term]))
+                    ->waitForText($expectedTitle)
+                    ->assertCount(self::LIST_SELECTOR, 1);
+            }
         });
     }
 
@@ -557,19 +628,19 @@ class PanelPropertyFiltersTest extends DuskTestCase
                 Property::factory()->for($owner)->create([
                     'title' => sprintf('Casa filtro %s %02d', $label, $number),
                     'operation' => 'sale', 'type' => 'house', 'status' => 'available',
-                    'city' => 'Lima', 'currency' => 'PEN', 'price' => 1000 + $number,
+                    'district_code' => '150122', 'currency' => 'PEN', 'price' => 1000 + $number,
                 ]);
             }
         }
-        foreach ([['title' => 'Sin coincidencia'], ['operation' => 'rent'], ['type' => 'apartment'], ['city' => 'Cusco'], ['currency' => 'USD']] as $mismatch) {
+        foreach ([['title' => 'Sin coincidencia'], ['operation' => 'rent'], ['type' => 'apartment'], ['district_code' => '040126'], ['currency' => 'USD']] as $mismatch) {
             Property::factory()->for($agent)->create(array_merge([
                 'title' => 'Casa filtro descartada', 'operation' => 'sale', 'type' => 'house',
-                'status' => 'available', 'city' => 'Lima', 'currency' => 'PEN', 'price' => 10,
+                'status' => 'available', 'district_code' => '150122', 'currency' => 'PEN', 'price' => 10,
             ], $mismatch));
         }
         $url = route('panel.properties.index', [
             'search' => 'Casa filtro', 'operation' => 'sale', 'type' => 'house',
-            'city' => 'Lima', 'currency' => 'PEN', 'sort' => 'price-asc', 'page' => 2,
+            'department_code' => '15', 'district_code' => '150122', 'currency' => 'PEN', 'sort' => 'price-asc', 'page' => 2,
         ]);
 
         $this->browse(function (Browser $browser) use ($agent, $otherAgent, $url): void {
@@ -579,7 +650,7 @@ class PanelPropertyFiltersTest extends DuskTestCase
                 ->assertCount(self::LIST_SELECTOR, 1)
                 ->assertInputValue('#panel-property-search', 'Casa filtro')
                 ->assertSeeIn('[aria-label="Operación"]', 'Venta')
-                ->assertSeeIn('[aria-label="Ciudad"]', 'Lima')
+                ->assertSeeIn('[aria-label="Departamento"]', 'Lima')
                 ->assertSeeIn('[aria-label="Ordenar propiedades"]', 'Precio: menor primero');
             $beforeReload = $browser->driver->getCurrentURL();
             $browser->refresh()->waitForText('Casa filtro propia 16')
@@ -633,13 +704,11 @@ class PanelPropertyFiltersTest extends DuskTestCase
 
         Property::factory()->for($agent)->create([
             'title' => 'Casa antigua',
-            'city' => 'Lima',
-            'zone' => 'Surco',
+            'district_code' => '150140',
         ]);
         Property::factory()->for($agent)->create([
             'title' => 'Casa reciente',
-            'city' => 'Lima',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
         ]);
 
         $this->browse(function (Browser $browser) use ($agent): void {

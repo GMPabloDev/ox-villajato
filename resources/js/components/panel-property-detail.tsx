@@ -15,6 +15,7 @@ import {
     type PropertyStatusValue,
 } from '@/components/property-status-badge';
 import { Button } from '@/components/ui/button';
+import { locationLabel } from '@/lib/ubigeo';
 
 export type PanelPropertyDetailData = {
     id: number;
@@ -25,8 +26,9 @@ export type PanelPropertyDetailData = {
     type_label: string;
     price_formatted: string;
     currency: string;
-    city: string;
-    zone: string;
+    district: string;
+    province: string;
+    department: string;
     bedrooms: number;
     bathrooms: number;
     area: string;
@@ -121,9 +123,12 @@ export function PanelPropertyDetail({
                 {property.title}
             </h2>
 
-            <p className="mt-2 flex items-center gap-1.5 text-xs text-muted-foreground">
-                <MapPin className="size-3.5 shrink-0" aria-hidden="true" />
-                {property.zone} · {property.city}
+            <p className="mt-2 flex items-start gap-1.5 text-xs text-muted-foreground">
+                <MapPin
+                    className="mt-0.5 size-3.5 shrink-0"
+                    aria-hidden="true"
+                />
+                <span>{locationLabel(property)}</span>
             </p>
 
             <p className="mt-5 text-[25px] font-semibold tracking-[-0.8px] tabular-nums">

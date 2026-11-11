@@ -3,6 +3,7 @@ import {
     PropertyStatusBadge,
     type PropertyStatusValue,
 } from '@/components/property-status-badge';
+import { locationLabel } from '@/lib/ubigeo';
 import { cn } from '@/lib/utils';
 
 export type PanelPropertyListItemData = {
@@ -10,7 +11,9 @@ export type PanelPropertyListItemData = {
     title: string;
     operation: 'rent' | 'sale';
     operation_label: string;
-    zone: string;
+    district: string;
+    province: string;
+    department: string;
     price_formatted: string;
     cover_photo_url: string | null;
     status: PropertyStatusValue;
@@ -50,7 +53,10 @@ export function PanelPropertyListItem({
                         {property.title}
                     </span>
                     <span className="mt-1 block text-[11px] text-muted-foreground">
-                        {property.zone} · {property.operation_label}
+                        {property.operation_label}
+                    </span>
+                    <span className="block text-[11px] text-muted-foreground">
+                        {locationLabel(property)}
                     </span>
                     <span className="mt-2 flex flex-wrap items-center justify-between gap-2">
                         <span className="text-[13px] font-semibold tabular-nums">

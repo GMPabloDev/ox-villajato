@@ -1,5 +1,6 @@
 import { Link } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
+import { locationLabel } from '@/lib/ubigeo';
 import { cn } from '@/lib/utils';
 
 type PropertyGalleryProperty = {
@@ -8,8 +9,9 @@ type PropertyGalleryProperty = {
     operation_label: string;
     type_label: string;
     price_formatted: string;
-    city: string;
-    zone: string;
+    district: string;
+    province: string;
+    department: string;
     bedrooms: number;
     bathrooms: number;
     area: string;
@@ -81,9 +83,7 @@ export default function PropertyGalleryCard({
 
             <div className="flex flex-col justify-center p-6 md:p-[42px]">
                 <div className="flex items-start justify-between gap-4 text-[11px] font-semibold tracking-[0.03em] text-muted-foreground">
-                    <span>
-                        {property.city} · {property.zone}
-                    </span>
+                    <span className="min-w-0">{locationLabel(property)}</span>
                     <span aria-hidden="true">
                         {position} / {totalLabel}
                     </span>

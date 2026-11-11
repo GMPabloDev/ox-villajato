@@ -41,8 +41,8 @@ import { Spinner } from '@/components/ui/spinner';
 import {
     hasActivePanelFilters,
     panelFiltersToQuery,
+    type PanelLocationOptions,
     type PanelPropertyFiltersValue,
-    type PanelPropertyZonesByCity,
 } from '@/lib/panel-property-filters';
 import {
     type PropertyCurrencyValue,
@@ -65,8 +65,9 @@ type PanelProperty = {
         type: PropertyTypeValue;
         type_label: string;
         currency: PropertyCurrencyValue;
-        city: string;
-        zone: string;
+        district: string;
+        province: string;
+        department: string;
         bedrooms: number;
         bathrooms: number;
         area: string;
@@ -107,15 +108,19 @@ export default function PanelPropertiesIndex({
     properties,
     filters,
     counts,
-    cities,
-    zonesByCity,
+    locations,
+    appliedLocation,
     filterErrors,
 }: {
     properties: PaginatedPanelProperties;
     filters: PanelPropertyFiltersValue;
     counts: PanelPropertyCounts;
-    cities: string[];
-    zonesByCity: PanelPropertyZonesByCity;
+    locations: PanelLocationOptions;
+    appliedLocation: {
+        department: string | null;
+        province: string | null;
+        district: string | null;
+    };
     filterErrors?: { price?: string };
 }) {
     const propertyList = properties.data;
@@ -279,8 +284,8 @@ export default function PanelPropertiesIndex({
                         key={filtersKey}
                         filters={filters}
                         counts={counts}
-                        cities={cities}
-                        zonesByCity={zonesByCity}
+                        locations={locations}
+                        appliedLocation={appliedLocation}
                         priceRangeError={filterErrors?.price ?? null}
                         onApply={applyFilters}
                     />

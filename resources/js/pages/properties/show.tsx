@@ -10,6 +10,7 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
 import type { PropertyOperationValue } from '@/lib/property-options';
+import { locationLabel } from '@/lib/ubigeo';
 import { cn } from '@/lib/utils';
 import { home } from '@/routes';
 
@@ -20,8 +21,9 @@ type Property = {
     operation: PropertyOperationValue;
     type_label: string;
     price_formatted: string;
-    city: string;
-    zone: string;
+    district: string;
+    province: string;
+    department: string;
     bedrooms: number;
     bathrooms: number;
     area: string;
@@ -92,9 +94,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                         {property.title}
                     </h1>
                     <div className="mt-2.5 flex flex-wrap items-center gap-x-2.5 gap-y-1 text-[13px] text-muted-foreground md:mt-3">
-                        <span>
-                            {property.zone}, {property.city}
-                        </span>
+                        <span>{locationLabel(property)}</span>
                         <span
                             aria-hidden="true"
                             className="size-1 rounded-full bg-[#a8bbb4]"
@@ -150,7 +150,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                                 Ubicación
                             </h2>
                             <p className="mt-[18px] max-w-[720px] text-[15px] leading-[1.9] text-muted-foreground">
-                                {property.zone}, {property.city}
+                                {locationLabel(property)}
                             </p>
                         </section>
                     </div>

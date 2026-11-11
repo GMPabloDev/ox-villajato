@@ -205,12 +205,12 @@ class PropertyArchivingTest extends TestCase
     {
         Property::factory()->create([
             'title' => 'Casa archivada',
-            'zone' => 'Cayma',
+            'district_code' => '040103',
             'status' => 'archived',
         ]);
         $availableProperty = Property::factory()->create([
             'title' => 'Casa disponible',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => 'available',
         ]);
 
@@ -220,7 +220,6 @@ class PropertyArchivingTest extends TestCase
                 ->component('properties/index')
                 ->has('properties', 1)
                 ->where('properties.0.id', $availableProperty->id)
-                ->where('zones', ['Miraflores'])
             );
     }
 
@@ -297,6 +296,28 @@ class PropertyArchivingTest extends TestCase
         $this->assertSame($expectedPropertyIds, $actualPropertyIds);
     }
 
+    public function test_archived_list_shows_the_location_of_each_property(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        $property = Property::factory()->for($agent)->create([
+            'district_code' => '040103',
+            'status' => 'archived',
+        ]);
+
+        $this->actingAs($agent)
+            ->get(route('panel.properties.archived'))
+            ->assertOk()
+            ->assertInertia(fn (Assert $page) => $page
+                ->component('panel/properties/archived')
+                ->where('properties.0.id', $property->id)
+                ->where('properties.0.district_code', '040103')
+                ->where('properties.0.district', 'Cayma')
+                ->where('properties.0.province', 'Arequipa')
+                ->where('properties.0.department', 'Arequipa')
+            );
+    }
+
     /**
      * @return array<string, array{0: string}>
      */
@@ -350,12 +371,12 @@ class PropertyArchivingTest extends TestCase
             : $owner;
         $property = Property::factory()->for($owner)->create([
             'title' => 'Casa republicada',
-            'zone' => 'Miraflores',
+            'district_code' => '150122',
             'status' => 'archived',
         ]);
         $remainingArchivedProperty = Property::factory()->for($owner)->create([
             'title' => 'Casa que permanece archivada',
-            'zone' => 'Cayma',
+            'district_code' => '040103',
             'status' => 'archived',
         ]);
 
@@ -395,7 +416,6 @@ class PropertyArchivingTest extends TestCase
             ->assertInertia(fn (Assert $page) => $page
                 ->has('properties', 1)
                 ->where('properties.0.id', $property->id)
-                ->where('zones', ['Miraflores'])
             );
 
         $this->get(route('properties.show', $property))
@@ -495,8 +515,9 @@ class PropertyArchivingTest extends TestCase
      *     description: string,
      *     price: string,
      *     currency: string,
-     *     city: string,
-     *     zone: string,
+     *     department_code: string,
+     *     province_code: string,
+     *     district_code: string,
      *     bedrooms: int,
      *     bathrooms: int,
      *     area: string,
@@ -512,8 +533,7 @@ class PropertyArchivingTest extends TestCase
             'description' => $property->description,
             'price' => $property->price,
             'currency' => $property->currency->value,
-            'city' => $property->city,
-            'zone' => $property->zone,
+            ...$this->propertyLocation($property->district_code),
             'bedrooms' => $property->bedrooms,
             'bathrooms' => $property->bathrooms,
             'area' => $property->area,
