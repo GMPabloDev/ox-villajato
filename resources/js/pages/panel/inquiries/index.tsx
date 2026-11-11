@@ -130,7 +130,11 @@ export default function PanelInquiriesIndex({
 
     function clearFilters() {
         setFiltersKey((key) => key + 1);
-        applyFilters({ ...requestedFilters.current, search: null, property: null });
+        applyFilters({
+            ...requestedFilters.current,
+            search: null,
+            property: null,
+        });
     }
 
     function selectInquiry(inquiry: PanelInquiryListItemData) {

@@ -27,8 +27,8 @@ export function PanelPropertyCard({
         contentSpacing === 'compact' ? 'space-y-2 p-4' : 'space-y-3 p-4';
 
     return (
-        <li className="overflow-hidden rounded-xl border border-border bg-card shadow-sm ">
-            <div className="aspect-[4/3] overflow-hidden bg-muted ">
+        <li className="overflow-hidden rounded-xl border border-border bg-card shadow-sm">
+            <div className="aspect-[4/3] overflow-hidden bg-muted">
                 {property.cover_photo_url ? (
                     <img
                         src={property.cover_photo_url}

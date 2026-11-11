@@ -100,7 +100,8 @@ export function PanelInquiryFilters({
         }
 
         window.addEventListener('popstate', handleHistoryNavigation);
-        return () => window.removeEventListener('popstate', handleHistoryNavigation);
+        return () =>
+            window.removeEventListener('popstate', handleHistoryNavigation);
     }, []);
 
     useEffect(() => {
@@ -185,7 +186,10 @@ export function PanelInquiryFilters({
     }
 
     function changeSort(value: string) {
-        if (!isPanelInquirySort(value) || value === pendingFiltersRef.current.sort) {
+        if (
+            !isPanelInquirySort(value) ||
+            value === pendingFiltersRef.current.sort
+        ) {
             return;
         }
 
@@ -261,7 +265,10 @@ export function PanelInquiryFilters({
             <div className="flex h-11 items-center gap-2.5 self-end text-muted-foreground focus-within:border-ring focus-within:ring-[3px] focus-within:ring-ring/50 md:w-[168px] md:self-auto md:rounded-[10px] md:border md:border-[#cbd8ce] md:bg-card md:pr-1 md:pl-3 dark:border-border">
                 <ArrowUpDown className="size-4 shrink-0" aria-hidden="true" />
                 {isHydrated ? (
-                    <Select value={pendingFilters.sort} onValueChange={changeSort}>
+                    <Select
+                        value={pendingFilters.sort}
+                        onValueChange={changeSort}
+                    >
                         <SelectTrigger
                             aria-label="Ordenar consultas"
                             className={triggerClasses}
