@@ -44,16 +44,22 @@ class PropertyController extends Controller
             [
                 'operation' => ['nullable', Rule::enum(PropertyOperation::class)],
                 'type' => ['nullable', Rule::enum(PropertyType::class)],
+                'department_code' => ['nullable', 'string', Rule::exists('departments', 'code')],
+                'province_code' => ['nullable', 'string', Rule::exists('provinces', 'code')],
                 'district_code' => ['nullable', 'string', Rule::exists('districts', 'code')],
             ],
             [
                 'operation.enum' => 'El valor seleccionado para operación no es válido.',
                 'type.enum' => 'El valor seleccionado para tipo no es válido.',
+                'department_code.exists' => 'El valor seleccionado para departamento no es válido.',
+                'province_code.exists' => 'El valor seleccionado para provincia no es válido.',
                 'district_code.exists' => 'El valor seleccionado para distrito no es válido.',
             ],
             [
                 'operation' => 'operación',
                 'type' => 'tipo',
+                'department_code' => 'departamento',
+                'province_code' => 'provincia',
                 'district_code' => 'distrito',
             ],
         );
@@ -64,64 +70,146 @@ class PropertyController extends Controller
                 ->withErrors($validator);
         }
 
-        /** @var array{operation?: string|null, type?: string|null, district_code?: string|null} $filters */
+        /**
+         * @var array{
+         *     operation?: string|null,
+         *     type?: string|null,
+         *     department_code?: string|null,
+         *     province_code?: string|null,
+         *     district_code?: string|null
+         * } $filters
+         */
         $filters = $validator->validated();
-        $districtCode = $filters['district_code'] ?? null;
+        $location = $this->catalogLocation(
+            $filters['department_code'] ?? null,
+            $filters['province_code'] ?? null,
+            $filters['district_code'] ?? null,
+        );
 
-        $properties = Property::query()
-            ->available()
-            ->with('photos', 'district.province.department')
-            ->when(
-                $filters['operation'] ?? null,
-                fn (Builder $query, string $operation): Builder => $query->where('operation', $operation),
-            )
-            ->when(
-                $filters['type'] ?? null,
-                fn (Builder $query, string $type): Builder => $query->where('type', $type),
-            )
-            ->when(
-                $districtCode,
-                fn (Builder $query, string $district): Builder => $query->where('district_code', $district),
-            )
+        $properties = $this->applyLocationFilters(
+            Property::query()
+                ->available()
+                ->with('photos', 'district.province.department')
+                ->when(
+                    $filters['operation'] ?? null,
+                    fn (Builder $query, string $operation): Builder => $query->where('operation', $operation),
+                )
+                ->when(
+                    $filters['type'] ?? null,
+                    fn (Builder $query, string $type): Builder => $query->where('type', $type),
+                ),
+            $location['department_code'],
+            $location['province_code'],
+            $location['district_code'],
+        )
             ->latest('id')
             ->get();
-
-        $districts = $this->catalogDistricts();
-        $appliedDistrict = null;
-
-        if ($districtCode !== null && ! collect($districts)->contains('code', $districtCode)) {
-            $district = District::query()->with('province.department')->find($districtCode);
-            if ($district !== null) {
-                $appliedDistrict = [
-                    'code' => $district->code,
-                    'name' => $district->name,
-                    'province' => $district->province->name,
-                    'department' => $district->province->department->name,
-                ];
-            }
-        }
 
         return Inertia::render('properties/index', [
             'properties' => $properties
                 ->map(fn (Property $property): array => (new PropertyResource($property))->resolve())
                 ->all(),
-            'districts' => $districts,
-            'appliedDistrict' => $appliedDistrict,
             'filters' => [
                 'operation' => $filters['operation'] ?? null,
                 'type' => $filters['type'] ?? null,
-                'district_code' => $districtCode,
+                'department_code' => $location['department_code'],
+                'province_code' => $location['province_code'],
+                'district_code' => $location['district_code'],
             ],
+            'locations' => $this->catalogLocations(),
+            'appliedLocation' => $location['applied'],
         ]);
     }
 
     /**
-     * Districts with available properties for the public filter, identified by
-     * their province and department so homonyms stay distinguishable.
+     * Resolve the selected location levels into a coherent chain and the names
+     * the catalog displays for them.
      *
-     * @return list<array{code: string, name: string, province: string, department: string}>
+     * A district fills its province and department, so an existing district
+     * link keeps working. A level that does not belong to the level above it is
+     * dropped, keeping the highest valid level. The names stay available when
+     * the selected location no longer has available properties.
+     *
+     * @return array{
+     *     department_code: string|null,
+     *     province_code: string|null,
+     *     district_code: string|null,
+     *     applied: array{department: string|null, province: string|null, district: string|null}
+     * }
      */
-    private function catalogDistricts(): array
+    private function catalogLocation(
+        ?string $departmentCode,
+        ?string $provinceCode,
+        ?string $districtCode,
+    ): array {
+        $district = $districtCode === null
+            ? null
+            : District::query()->with('province.department')->find($districtCode);
+
+        if ($district !== null) {
+            $fitsDepartment = $departmentCode === null || $district->province->department_code === $departmentCode;
+            $fitsProvince = $provinceCode === null || $district->province_code === $provinceCode;
+
+            if ($fitsDepartment && $fitsProvince) {
+                return [
+                    'department_code' => $district->province->department_code,
+                    'province_code' => $district->province_code,
+                    'district_code' => $district->code,
+                    'applied' => [
+                        'department' => $district->province->department->name,
+                        'province' => $district->province->name,
+                        'district' => $district->name,
+                    ],
+                ];
+            }
+        }
+
+        $province = $provinceCode === null
+            ? null
+            : Province::query()->with('department')->find($provinceCode);
+
+        if ($province !== null && ($departmentCode === null || $province->department_code === $departmentCode)) {
+            return [
+                'department_code' => $province->department_code,
+                'province_code' => $province->code,
+                'district_code' => null,
+                'applied' => [
+                    'department' => $province->department->name,
+                    'province' => $province->name,
+                    'district' => null,
+                ],
+            ];
+        }
+
+        $department = $departmentCode === null
+            ? null
+            : Department::query()->find($departmentCode);
+
+        return [
+            'department_code' => $department?->code,
+            'province_code' => null,
+            'district_code' => null,
+            'applied' => [
+                'department' => $department?->name,
+                'province' => null,
+                'district' => null,
+            ],
+        ];
+    }
+
+    /**
+     * Locations with available properties offered by the public filters, from
+     * the department down to the district. The options never depend on the
+     * operation, the type or the selected location, and a district carries its
+     * province and department so homonyms stay distinguishable.
+     *
+     * @return array{
+     *     departments: list<array{code: string, name: string}>,
+     *     provinces: list<array{code: string, name: string, department_code: string}>,
+     *     districts: list<array{code: string, name: string, province_code: string, province: string, department: string}>
+     * }
+     */
+    private function catalogLocations(): array
     {
         /** @var list<string> $codes */
         $codes = Property::query()
@@ -131,22 +219,51 @@ class PropertyController extends Controller
             ->pluck('district_code')
             ->all();
 
-        return array_values(
-            District::query()
-                ->whereIn('code', $codes)
-                ->with('province.department')
-                ->get()
-                ->sortBy(fn (District $district): string => Str::lower(Str::ascii(
-                    $district->name.', '.$district->province->name.' '.$district->province->department->name,
-                )))
-                ->map(fn (District $district): array => [
-                    'code' => $district->code,
-                    'name' => $district->name,
-                    'province' => $district->province->name,
-                    'department' => $district->province->department->name,
-                ])
-                ->all(),
-        );
+        $districts = District::query()
+            ->whereIn('code', $codes)
+            ->with('province.department')
+            ->get()
+            ->sortBy(fn (District $district): string => Str::lower(Str::ascii(
+                $district->name.', '.$district->province->name.' '.$district->province->department->name,
+            )))
+            ->values();
+
+        /** @var Collection<string, Province> $provinces */
+        $provinces = $districts
+            ->map(fn (District $district): Province => $district->province)
+            ->keyBy('code');
+
+        /** @var Collection<string, Department> $departments */
+        $departments = $provinces
+            ->map(fn (Province $province): Department => $province->department)
+            ->keyBy('code');
+
+        return [
+            'departments' => $this->sortLocationOptions(
+                $departments->map(fn (Department $department): array => [
+                    'code' => $department->code,
+                    'name' => $department->name,
+                ])->all(),
+            ),
+            'provinces' => $this->sortLocationOptions(
+                $provinces->map(fn (Province $province): array => [
+                    'code' => $province->code,
+                    'name' => $province->name,
+                    'department_code' => $province->department_code,
+                ])->all(),
+            ),
+            'districts' => array_values(
+                $districts
+                    ->map(fn (District $district): array => [
+                        'code' => $district->code,
+                        'name' => $district->name,
+                        'province_code' => $district->province_code,
+                        'province' => $district->province->name,
+                        'department' => $district->province->department->name,
+                    ])
+                    ->all(),
+            ),
+        ];
     }
 
     public function panelIndex(PanelPropertyIndexRequest $request): Response|RedirectResponse
@@ -333,7 +450,7 @@ class PropertyController extends Controller
             $query->where('type', $filters['type']);
         }
 
-        $query = $this->applyPanelLocationFilters(
+        $query = $this->applyLocationFilters(
             $query,
             $filters['department_code'],
             $filters['province_code'],
@@ -366,7 +483,7 @@ class PropertyController extends Controller
      * @param  Builder<Property>  $query
      * @return Builder<Property>
      */
-    private function applyPanelLocationFilters(
+    private function applyLocationFilters(
         Builder $query,
         ?string $department,
         ?string $province,

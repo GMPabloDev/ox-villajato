@@ -32,12 +32,42 @@ type PropertyCard = {
     url: string;
 };
 
-type CatalogDistrict = {
+type CatalogDepartment = {
     code: string;
     name: string;
+};
+
+type CatalogProvince = CatalogDepartment & {
+    department_code: string;
+};
+
+type CatalogDistrict = CatalogDepartment & {
+    province_code: string;
     province: string;
     department: string;
 };
+
+/**
+ * Locations with available properties offered by the public filters, from the
+ * department down to the district.
+ */
+type CatalogLocations = {
+    departments: CatalogDepartment[];
+    provinces: CatalogProvince[];
+    districts: CatalogDistrict[];
+};
+
+/**
+ * Names of the selected location, resolved by the server. They stay available
+ * when the selected location no longer has properties on offer.
+ */
+type AppliedLocation = {
+    department: string | null;
+    province: string | null;
+    district: string | null;
+};
+
+type FilterMenuId = 'type' | 'department' | 'province' | 'district';
 
 /**
  * District, province and department, so districts that share a name stay
@@ -51,9 +81,31 @@ function districtLabel(district: CatalogDistrict): string {
     });
 }
 
+/**
+ * Readable label of the applied district when it has no available properties
+ * and therefore does not appear among the location options.
+ */
+function appliedDistrictLabel(appliedLocation: AppliedLocation): string | null {
+    if (
+        appliedLocation.district === null ||
+        appliedLocation.province === null ||
+        appliedLocation.department === null
+    ) {
+        return null;
+    }
+
+    return locationLabel({
+        district: appliedLocation.district,
+        province: appliedLocation.province,
+        department: appliedLocation.department,
+    });
+}
+
 type CatalogFilters = {
     operation: PropertyOperationValue | null;
     type: PropertyTypeValue | null;
+    department_code: string | null;
+    province_code: string | null;
     district_code: string | null;
 };
 
@@ -71,6 +123,14 @@ function filtersToQuery(filters: CatalogFilters): Record<string, string> {
         query.type = filters.type;
     }
 
+    if (filters.department_code) {
+        query.department_code = filters.department_code;
+    }
+
+    if (filters.province_code) {
+        query.province_code = filters.province_code;
+    }
+
     if (filters.district_code) {
         query.district_code = filters.district_code;
     }
@@ -85,34 +145,121 @@ function catalogHref(
     return home.url({ query: filtersToQuery({ ...filters, operation }) });
 }
 
+type LocationFilterOption = {
+    value: string;
+    label: string;
+    disabled?: boolean;
+};
+
+/**
+ * Keep the applied location visible in its menu when it is not among the
+ * available locations, so a valid selection never silently disappears from the
+ * controls even after its last property is gone.
+ */
+function withAppliedOption(
+    options: LocationFilterOption[],
+    code: string | null,
+    appliedLabel: string | null,
+): LocationFilterOption[] {
+    if (code === null || options.some((option) => option.value === code)) {
+        return options;
+    }
+
+    return [
+        ...options,
+        {
+            value: code,
+            label: `${appliedLabel ?? code} (filtro actual)`,
+            disabled: true,
+        },
+    ];
+}
+
 export default function PropertiesIndex({
     properties,
-    districts,
-    appliedDistrict,
     filters,
+    locations,
+    appliedLocation,
 }: {
     properties: PropertyCard[];
-    districts: CatalogDistrict[];
-    appliedDistrict: CatalogDistrict | null;
     filters: CatalogFilters;
+    locations: CatalogLocations;
+    appliedLocation: AppliedLocation;
 }) {
-    const [openMenu, setOpenMenu] = useState<'type' | 'district' | null>(null);
+    const [openMenu, setOpenMenu] = useState<FilterMenuId | null>(null);
 
     const hasActiveFilters = Boolean(
-        filters.operation || filters.type || filters.district_code,
+        filters.operation ||
+        filters.type ||
+        filters.department_code ||
+        filters.province_code ||
+        filters.district_code,
     );
 
     const total = properties.length;
     const typeLabel =
         propertyTypeOptions.find((option) => option.value === filters.type)
             ?.label ?? 'Todos';
+    const departmentValueLabel =
+        locations.departments.find(
+            (department) => department.code === filters.department_code,
+        )?.name ??
+        appliedLocation.department ??
+        'Todos';
+    const provinceValueLabel =
+        locations.provinces.find(
+            (province) => province.code === filters.province_code,
+        )?.name ??
+        appliedLocation.province ??
+        'Todas';
+    const selectedDistrict = locations.districts.find(
+        (district) => district.code === filters.district_code,
+    );
     const districtValueLabel =
-        districts
-            .filter((district) => district.code === filters.district_code)
-            .map(districtLabel)
-            .at(0) ??
-        (appliedDistrict ? districtLabel(appliedDistrict) : null) ??
-        (filters.district_code ? `Distrito ${filters.district_code}` : 'Todos');
+        (selectedDistrict ? districtLabel(selectedDistrict) : null) ??
+        appliedDistrictLabel(appliedLocation) ??
+        'Todos';
+
+    const departmentOptions = withAppliedOption(
+        locations.departments.map((department) => ({
+            value: department.code,
+            label: department.name,
+        })),
+        filters.department_code,
+        appliedLocation.department,
+    );
+
+    const provinceOptions = withAppliedOption(
+        filters.department_code === null
+            ? []
+            : locations.provinces
+                  .filter(
+                      (province) =>
+                          province.department_code === filters.department_code,
+                  )
+                  .map((province) => ({
+                      value: province.code,
+                      label: province.name,
+                  })),
+        filters.province_code,
+        appliedLocation.province,
+    );
+
+    const districtOptions = withAppliedOption(
+        filters.province_code === null
+            ? []
+            : locations.districts
+                  .filter(
+                      (district) =>
+                          district.province_code === filters.province_code,
+                  )
+                  .map((district) => ({
+                      value: district.code,
+                      label: districtLabel(district),
+                  })),
+        filters.district_code,
+        appliedDistrictLabel(appliedLocation),
+    );
 
     useEffect(() => {
         if (openMenu === null) {
@@ -148,7 +295,7 @@ export default function PropertiesIndex({
         };
     }, [openMenu]);
 
-    const handleMenuToggle = (menu: 'type' | 'district', open: boolean) => {
+    const handleMenuToggle = (menu: FilterMenuId, open: boolean) => {
         setOpenMenu((current) => {
             if (open) {
                 return menu;
@@ -173,6 +320,30 @@ export default function PropertiesIndex({
             preserveScroll: true,
             preserveState: true,
         });
+    };
+
+    /**
+     * Every child level belongs to a single parent, so changing or clearing a
+     * level leaves the levels below it without a valid parent. They are
+     * dropped instead of keeping an incompatible selection.
+     */
+    const applyDepartment = (departmentCode: string | null) => {
+        applyFilters({
+            department_code: departmentCode,
+            province_code: null,
+            district_code: null,
+        });
+    };
+
+    const applyProvince = (provinceCode: string | null) => {
+        applyFilters({
+            province_code: provinceCode,
+            district_code: null,
+        });
+    };
+
+    const applyDistrict = (districtCode: string | null) => {
+        applyFilters({ district_code: districtCode });
     };
 
     const clearFilters = () => {
@@ -379,7 +550,7 @@ export default function PropertiesIndex({
                             })}
                         </div>
 
-                        <div className="flex w-full items-center gap-1.5 md:ml-auto md:w-auto md:gap-1">
+                        <div className="grid w-full grid-cols-2 gap-1.5 md:ml-auto md:flex md:w-auto md:flex-wrap md:items-center md:gap-1">
                             <FilterMenu
                                 id="type"
                                 label="Tipo"
@@ -416,6 +587,83 @@ export default function PropertiesIndex({
                             </FilterMenu>
 
                             <FilterMenu
+                                id="department"
+                                label="Departamento"
+                                valueLabel={departmentValueLabel}
+                                legend="Departamento"
+                                open={openMenu === 'department'}
+                                align="right"
+                                onOpenChange={(open) =>
+                                    handleMenuToggle('department', open)
+                                }
+                            >
+                                <FilterOption
+                                    name="property-department"
+                                    value="all"
+                                    label="Todos los departamentos"
+                                    checked={filters.department_code === null}
+                                    onSelect={() => applyDepartment(null)}
+                                />
+                                {departmentOptions.map((option) => (
+                                    <FilterOption
+                                        key={option.value}
+                                        name="property-department"
+                                        value={option.value}
+                                        label={option.label}
+                                        disabled={option.disabled}
+                                        checked={
+                                            filters.department_code ===
+                                            option.value
+                                        }
+                                        onSelect={() =>
+                                            applyDepartment(option.value)
+                                        }
+                                    />
+                                ))}
+                            </FilterMenu>
+
+                            <FilterMenu
+                                id="province"
+                                label="Provincia"
+                                valueLabel={provinceValueLabel}
+                                legend="Provincia"
+                                open={openMenu === 'province'}
+                                onOpenChange={(open) =>
+                                    handleMenuToggle('province', open)
+                                }
+                            >
+                                <FilterOption
+                                    name="property-province"
+                                    value="all"
+                                    label="Todas las provincias"
+                                    checked={filters.province_code === null}
+                                    onSelect={() => applyProvince(null)}
+                                />
+                                {filters.department_code === null && (
+                                    <p className="px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+                                        Elige un departamento para ver sus
+                                        provincias.
+                                    </p>
+                                )}
+                                {provinceOptions.map((option) => (
+                                    <FilterOption
+                                        key={option.value}
+                                        name="property-province"
+                                        value={option.value}
+                                        label={option.label}
+                                        disabled={option.disabled}
+                                        checked={
+                                            filters.province_code ===
+                                            option.value
+                                        }
+                                        onSelect={() =>
+                                            applyProvince(option.value)
+                                        }
+                                    />
+                                ))}
+                            </FilterMenu>
+
+                            <FilterMenu
                                 id="district"
                                 label="Distrito"
                                 valueLabel={districtValueLabel}
@@ -431,24 +679,27 @@ export default function PropertiesIndex({
                                     value="all"
                                     label="Todos los distritos"
                                     checked={filters.district_code === null}
-                                    onSelect={() =>
-                                        applyFilters({ district_code: null })
-                                    }
+                                    onSelect={() => applyDistrict(null)}
                                 />
-                                {districts.map((district) => (
+                                {filters.province_code === null && (
+                                    <p className="px-3 py-2 text-[11px] leading-snug text-muted-foreground">
+                                        Elige una provincia para ver sus
+                                        distritos.
+                                    </p>
+                                )}
+                                {districtOptions.map((option) => (
                                     <FilterOption
-                                        key={district.code}
+                                        key={option.value}
                                         name="property-district"
-                                        value={district.code}
-                                        label={districtLabel(district)}
+                                        value={option.value}
+                                        label={option.label}
+                                        disabled={option.disabled}
                                         checked={
                                             filters.district_code ===
-                                            district.code
+                                            option.value
                                         }
                                         onSelect={() =>
-                                            applyFilters({
-                                                district_code: district.code,
-                                            })
+                                            applyDistrict(option.value)
                                         }
                                     />
                                 ))}
