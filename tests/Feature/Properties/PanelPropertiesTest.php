@@ -223,6 +223,8 @@ class PanelPropertiesTest extends TestCase
                 'bedrooms' => 2,
                 'bathrooms' => 1,
                 'area' => 95.5,
+                'has_garage' => false,
+                'is_furnished' => true,
                 'photo_order' => $photoIds,
             ]);
 
@@ -837,6 +839,8 @@ class PanelPropertiesTest extends TestCase
             'bedrooms' => $property->bedrooms,
             'bathrooms' => $property->bathrooms,
             'area' => $property->area,
+            'has_garage' => $property->has_garage,
+            'is_furnished' => $property->is_furnished,
         ], $overrides);
     }
 

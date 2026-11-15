@@ -75,6 +75,8 @@ class PropertyLocationFormTest extends DuskTestCase
                 ->type('#bedrooms', '3')
                 ->type('#bathrooms', '2')
                 ->type('#area', '120')
+                ->click('input[name="has_garage"][value="1"] + span')
+                ->click('input[name="is_furnished"][value="0"] + span')
                 ->attach('#property-photos', base_path('database/seeders/assets/properties/casa.jpeg'));
 
             $this->selectLocation($browser, '#property-department', 'Lima');
@@ -86,7 +88,9 @@ class PropertyLocationFormTest extends DuskTestCase
                 ->assertInputValue('input[name="district_code"]', '150122')
                 ->press('form button[type="submit"]')
                 ->waitForText('Casa con jardín en Miraflores')
-                ->assertSee('Miraflores, Lima · Lima');
+                ->assertSee('Miraflores, Lima · Lima')
+                ->assertSeeIn('[data-test="property-garage"]', 'Sí')
+                ->assertSeeIn('[data-test="property-furnished"]', 'No');
         });
 
         $this->assertSame('150122', Property::sole()->district_code);

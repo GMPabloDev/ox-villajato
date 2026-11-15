@@ -39,6 +39,8 @@ class PublishPropertyTest extends TestCase
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
+            'has_garage' => true,
+            'is_furnished' => false,
             'photos' => [
                 UploadedFile::fake()->image('front.jpg'),
                 UploadedFile::fake()->image('living.png'),
@@ -62,6 +64,8 @@ class PublishPropertyTest extends TestCase
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
+            'has_garage' => true,
+            'is_furnished' => false,
         ]);
 
         $this->assertCount(3, $property->photos);

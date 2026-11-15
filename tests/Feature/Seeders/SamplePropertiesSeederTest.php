@@ -61,6 +61,28 @@ class SamplePropertiesSeederTest extends TestCase
         $this->assertCount(21, Storage::disk($photosDisk)->allFiles(SamplePropertiesSeeder::PHOTO_DIRECTORY));
     }
 
+    public function test_sample_properties_answer_whether_they_have_a_garage_and_are_furnished(): void
+    {
+        Storage::fake((string) config('properties.photos_disk'));
+
+        User::factory()->agent()->create();
+
+        app(SamplePropertiesSeeder::class)->run();
+
+        $answers = Property::query()
+            ->get(['title', 'has_garage', 'is_furnished'])
+            ->mapWithKeys(fn (Property $property): array => [
+                $property->title => [$property->has_garage, $property->is_furnished],
+            ])
+            ->all();
+
+        $this->assertSame([false, true], $answers['Departamento amoblado en Yanahuara']);
+        $this->assertContains(true, array_column($answers, 0));
+        $this->assertContains(false, array_column($answers, 0));
+        $this->assertContains(true, array_column($answers, 1));
+        $this->assertContains(false, array_column($answers, 1));
+    }
+
     public function test_sample_properties_use_catalog_districts_without_confusing_homonyms(): void
     {
         Storage::fake((string) config('properties.photos_disk'));
