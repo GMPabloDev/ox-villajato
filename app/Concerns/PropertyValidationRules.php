@@ -39,6 +39,8 @@ trait PropertyValidationRules
             'bedrooms' => ['required', 'integer', 'min:0'],
             'bathrooms' => ['required', 'integer', 'min:0'],
             'area' => ['required', 'numeric', 'gt:0'],
+            'has_garage' => ['required', 'boolean'],
+            'is_furnished' => ['required', 'boolean'],
         ];
     }
 
@@ -60,6 +62,7 @@ trait PropertyValidationRules
             'gt' => 'El campo :attribute debe ser mayor que cero.',
             'min' => 'El campo :attribute debe ser mayor o igual a :min.',
             'max' => 'El campo :attribute no debe superar :max caracteres.',
+            'boolean' => 'El campo :attribute debe indicar sí o no.',
             'array' => 'El campo :attribute debe ser una lista.',
             'list' => 'El campo :attribute debe ser una lista ordenada.',
             'image' => 'Cada foto debe ser una imagen válida.',
@@ -98,6 +101,8 @@ trait PropertyValidationRules
             'bedrooms' => 'dormitorios',
             'bathrooms' => 'baños',
             'area' => 'área',
+            'has_garage' => 'garaje',
+            'is_furnished' => 'amueblado',
         ];
     }
 }
