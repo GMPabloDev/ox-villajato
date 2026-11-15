@@ -2,11 +2,13 @@ import {
     Archive,
     Bath,
     BedDouble,
+    Car,
     Check,
     MapPin,
     Pencil,
     RotateCcw,
     Ruler,
+    Sofa,
 } from 'lucide-react';
 import type { ReactNode } from 'react';
 import { PropertyImage } from '@/components/property-image';
@@ -32,6 +34,8 @@ export type PanelPropertyDetailData = {
     bedrooms: number;
     bathrooms: number;
     area: string;
+    has_garage: boolean;
+    is_furnished: boolean;
     cover_photo_url: string | null;
     status: PropertyStatusValue;
     status_label: string;
@@ -59,15 +63,22 @@ function Feature({
     icon,
     label,
     value,
+    testId,
+    showLabel = false,
 }: {
     icon: ReactNode;
     label: string;
     value: string;
+    testId: string;
+    showLabel?: boolean;
 }) {
     return (
-        <div className="flex min-w-0 flex-col items-center gap-2 text-[10px] text-muted-foreground">
+        <div
+            data-test={testId}
+            className="flex min-w-0 basis-[30%] flex-col items-center gap-2 text-[10px] text-muted-foreground"
+        >
             {icon}
-            <dt className="sr-only">{label}</dt>
+            <dt className={showLabel ? 'text-center' : 'sr-only'}>{label}</dt>
             <dd className="text-center text-xs font-semibold text-foreground">
                 {value}
             </dd>
@@ -139,13 +150,14 @@ export function PanelPropertyDetail({
                 </span>
             </p>
 
-            <dl className="my-5 grid grid-cols-3 gap-2 border-y border-border py-4">
+            <dl className="my-5 flex flex-wrap justify-center gap-2 border-y border-border py-4">
                 <Feature
                     icon={<BedDouble className="size-4" aria-hidden="true" />}
                     label="Dormitorios"
                     value={`${property.bedrooms} ${
                         property.bedrooms === 1 ? 'dormitorio' : 'dormitorios'
                     }`}
+                    testId="panel-bedrooms"
                 />
                 <Feature
                     icon={<Bath className="size-4" aria-hidden="true" />}
@@ -153,11 +165,27 @@ export function PanelPropertyDetail({
                     value={`${property.bathrooms} ${
                         property.bathrooms === 1 ? 'baño' : 'baños'
                     }`}
+                    testId="panel-bathrooms"
                 />
                 <Feature
                     icon={<Ruler className="size-4" aria-hidden="true" />}
                     label="Área"
                     value={`${formatArea(property.area)} m²`}
+                    testId="panel-area"
+                />
+                <Feature
+                    icon={<Car className="size-4" aria-hidden="true" />}
+                    label="Garaje"
+                    value={property.has_garage ? 'Sí' : 'No'}
+                    testId="panel-garage"
+                    showLabel
+                />
+                <Feature
+                    icon={<Sofa className="size-4" aria-hidden="true" />}
+                    label="Amueblado"
+                    value={property.is_furnished ? 'Sí' : 'No'}
+                    testId="panel-furnished"
+                    showLabel
                 />
             </dl>
 
