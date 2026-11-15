@@ -1,6 +1,6 @@
 # SPEC 18 — Registrar garaje y amueblado
 
-> **Estado:** Aprobada
+> **Estado:** Implementada
 > **Depende de:** SPEC 01, SPEC 04, SPEC 07
 > **Fecha:** 2026-11-14
 > **Objetivo:** Registrar si una propiedad tiene garaje y si está amueblada, y mostrar ambos datos en su ficha y en el panel.
@@ -47,15 +47,15 @@
 
 ## Criterios de aceptación
 
-- [ ] Al publicar o editar, el formulario exige seleccionar sí o no para garaje y para amueblado. No se presenta una respuesta como seleccionada por defecto al publicar.
-- [ ] Al editar, el formulario muestra los valores guardados y permite cambiarlos de sí a no y de no a sí.
-- [ ] El servidor rechaza cada campo ausente o inválido en alta y edición. Muestra los errores y no guarda cambios.
-- [ ] La ficha pública y el detalle del panel muestran ambos datos, tanto cuando su valor es sí como cuando es no.
-- [ ] Garaje significa que la propiedad incluye un espacio de estacionamiento, techado o no.
-- [ ] El administrador conserva el acceso a la edición de todas las propiedades y el agente solo puede editar las suyas, sujeto a las restricciones de estado existentes.
-- [ ] Las propiedades existentes pueden eliminarse en desarrollo y pruebas sin borrar las consultas históricas. Las propiedades de muestra tienen ambos datos explícitos y coherentes con sus descripciones.
-- [ ] Si existen propiedades reales en producción sin estos datos, la migración se detiene sin borrarlas ni asignarles valores. Antes de continuar se consulta cómo migrarlas.
-- [ ] Las pruebas afectadas pasan y se comprueban en navegador la publicación, la edición, la ficha pública y el detalle del panel.
+- [x] Al publicar o editar, el formulario exige seleccionar sí o no para garaje y para amueblado. No se presenta una respuesta como seleccionada por defecto al publicar.
+- [x] Al editar, el formulario muestra los valores guardados y permite cambiarlos de sí a no y de no a sí.
+- [x] El servidor rechaza cada campo ausente o inválido en alta y edición. Muestra los errores y no guarda cambios.
+- [x] La ficha pública y el detalle del panel muestran ambos datos, tanto cuando su valor es sí como cuando es no.
+- [x] Garaje significa que la propiedad incluye un espacio de estacionamiento, techado o no.
+- [x] El administrador conserva el acceso a la edición de todas las propiedades y el agente solo puede editar las suyas, sujeto a las restricciones de estado existentes.
+- [x] Las propiedades existentes pueden eliminarse en desarrollo y pruebas sin borrar las consultas históricas. Las propiedades de muestra tienen ambos datos explícitos y coherentes con sus descripciones.
+- [x] Si existen propiedades reales en producción sin estos datos, la migración se detiene sin borrarlas ni asignarles valores. Antes de continuar se consulta cómo migrarlas.
+- [x] Las pruebas afectadas pasan y se comprueban en navegador la publicación, la edición, la ficha pública y el detalle del panel.
 
 ## Decisiones
 
