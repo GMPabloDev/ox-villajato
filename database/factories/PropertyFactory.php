@@ -38,6 +38,8 @@ class PropertyFactory extends Factory
             'bedrooms' => fake()->numberBetween(0, 5),
             'bathrooms' => fake()->numberBetween(1, 4),
             'area' => fake()->randomFloat(2, 40, 400),
+            'has_garage' => fake()->boolean(),
+            'is_furnished' => fake()->boolean(),
         ];
     }
 }

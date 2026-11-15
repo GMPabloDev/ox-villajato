@@ -39,6 +39,8 @@ class PropertyValidationTest extends TestCase
                 'bedrooms',
                 'bathrooms',
                 'area',
+                'has_garage',
+                'is_furnished',
                 'photos',
             ])
             ->assertSessionHasErrors([
@@ -190,6 +192,8 @@ class PropertyValidationTest extends TestCase
                 'bedrooms' => 3,
                 'bathrooms' => 2,
                 'area' => 120.5,
+                'has_garage' => false,
+                'is_furnished' => false,
                 'photo_order' => [$photo->id],
             ]);
 
@@ -339,6 +343,8 @@ class PropertyValidationTest extends TestCase
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
+            'has_garage' => false,
+            'is_furnished' => false,
             'photos' => [
                 UploadedFile::fake()->image('front.jpg'),
             ],

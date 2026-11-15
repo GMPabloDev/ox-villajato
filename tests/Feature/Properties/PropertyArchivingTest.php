@@ -521,6 +521,8 @@ class PropertyArchivingTest extends TestCase
      *     bedrooms: int,
      *     bathrooms: int,
      *     area: string,
+     *     has_garage: bool,
+     *     is_furnished: bool,
      *     photo_order: array<int, int>
      * }
      */
@@ -537,6 +539,8 @@ class PropertyArchivingTest extends TestCase
             'bedrooms' => $property->bedrooms,
             'bathrooms' => $property->bathrooms,
             'area' => $property->area,
+            'has_garage' => $property->has_garage,
+            'is_furnished' => $property->is_furnished,
             'photo_order' => [$photoId],
         ];
     }

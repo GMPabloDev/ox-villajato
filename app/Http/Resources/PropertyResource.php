@@ -40,6 +40,8 @@ class PropertyResource extends JsonResource
             'bedrooms' => $this->bedrooms,
             'bathrooms' => $this->bathrooms,
             'area' => $this->area,
+            'has_garage' => $this->has_garage,
+            'is_furnished' => $this->is_furnished,
             'cover_photo_url' => $this->photoUrl($this->photos->first()?->path),
             'photos' => $this->photos->map(fn (PropertyPhoto $photo): array => [
                 'url' => $this->photoUrl($photo->path),

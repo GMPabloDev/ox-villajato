@@ -32,13 +32,15 @@ use Illuminate\Support\Carbon;
  * @property int $bedrooms
  * @property int $bathrooms
  * @property string $area
+ * @property bool $has_garage
+ * @property bool $is_furnished
  * @property Carbon|null $created_at
  * @property Carbon|null $updated_at
  * @property-read District $district
  * @property-read Collection<int, PropertyPhoto> $photos
  * @property-read Collection<int, PropertyInquiry> $inquiries
  */
-#[Fillable(['operation', 'status', 'type', 'title', 'description', 'price', 'currency', 'district_code', 'bedrooms', 'bathrooms', 'area'])]
+#[Fillable(['operation', 'status', 'type', 'title', 'description', 'price', 'currency', 'district_code', 'bedrooms', 'bathrooms', 'area', 'has_garage', 'is_furnished'])]
 class Property extends Model
 {
     /** @use HasFactory<PropertyFactory> */
@@ -70,6 +72,8 @@ class Property extends Model
             'bedrooms' => 'integer',
             'bathrooms' => 'integer',
             'area' => 'decimal:2',
+            'has_garage' => 'boolean',
+            'is_furnished' => 'boolean',
         ];
     }
 

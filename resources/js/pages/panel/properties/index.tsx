@@ -71,6 +71,8 @@ type PanelProperty = {
         bedrooms: number;
         bathrooms: number;
         area: string;
+        has_garage: boolean;
+        is_furnished: boolean;
         status: PropertyStatusValue;
         status_label: string;
         status_action: 'close' | 'reopen' | null;

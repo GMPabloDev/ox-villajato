@@ -32,6 +32,8 @@ class AgentPropertyManagementTest extends TestCase
             'bedrooms' => 3,
             'bathrooms' => 2,
             'area' => 120.5,
+            'has_garage' => false,
+            'is_furnished' => true,
             'photos' => [
                 UploadedFile::fake()->image('front.jpg'),
             ],
@@ -478,6 +480,8 @@ class AgentPropertyManagementTest extends TestCase
             'bedrooms' => $property->bedrooms,
             'bathrooms' => $property->bathrooms,
             'area' => $property->area,
+            'has_garage' => $property->has_garage,
+            'is_furnished' => $property->is_furnished,
         ], $overrides);
     }
 }

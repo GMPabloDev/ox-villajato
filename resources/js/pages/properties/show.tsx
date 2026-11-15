@@ -1,5 +1,12 @@
 import { Form, Head, Link } from '@inertiajs/react';
-import { Bath, BedDouble, Maximize, type LucideIcon } from 'lucide-react';
+import {
+    Bath,
+    BedDouble,
+    Car,
+    Maximize,
+    Sofa,
+    type LucideIcon,
+} from 'lucide-react';
 import { store } from '@/actions/App/Http/Controllers/PropertyInquiryController';
 import InputError from '@/components/input-error';
 import PropertyPhotoGallery, {
@@ -27,6 +34,8 @@ type Property = {
     bedrooms: number;
     bathrooms: number;
     area: string;
+    has_garage: boolean;
+    is_furnished: boolean;
     photos: PropertyPhoto[];
 };
 
@@ -40,13 +49,18 @@ function PropertyFeature({
     icon: Icon,
     value,
     label,
+    testId,
 }: {
     icon: LucideIcon;
     value: string;
     label: string;
+    testId: string;
 }) {
     return (
-        <div className="flex items-center gap-x-2.5 md:gap-x-[15px]">
+        <div
+            data-test={testId}
+            className="flex items-center gap-x-2.5 md:gap-x-[15px]"
+        >
             <span
                 aria-hidden="true"
                 className="grid size-[46px] flex-none place-items-center rounded-xl bg-secondary text-primary md:size-[52px] md:rounded-[14px]"
@@ -117,6 +131,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                                 icon={Maximize}
                                 value={`${area} m²`}
                                 label="Área total"
+                                testId="property-area"
                             />
                             <PropertyFeature
                                 icon={BedDouble}
@@ -126,6 +141,7 @@ export default function PropertyShow({ property }: { property: Property }) {
                                         ? 'Dormitorio'
                                         : 'Dormitorios'
                                 }
+                                testId="property-bedrooms"
                             />
                             <PropertyFeature
                                 icon={Bath}
@@ -133,6 +149,19 @@ export default function PropertyShow({ property }: { property: Property }) {
                                 label={
                                     property.bathrooms === 1 ? 'Baño' : 'Baños'
                                 }
+                                testId="property-bathrooms"
+                            />
+                            <PropertyFeature
+                                icon={Car}
+                                value={property.has_garage ? 'Sí' : 'No'}
+                                label="Garaje"
+                                testId="property-garage"
+                            />
+                            <PropertyFeature
+                                icon={Sofa}
+                                value={property.is_furnished ? 'Sí' : 'No'}
+                                label="Amueblado"
+                                testId="property-furnished"
                             />
                         </div>
 

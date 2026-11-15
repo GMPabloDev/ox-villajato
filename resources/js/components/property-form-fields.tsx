@@ -32,7 +32,22 @@ export type PropertyFormDefaults = {
     bedrooms?: number;
     bathrooms?: number;
     area?: string;
+    has_garage?: boolean;
+    is_furnished?: boolean;
 };
+
+const yesOrNoOptions = [
+    { value: '1', label: 'Sí' },
+    { value: '0', label: 'No' },
+] as const;
+
+function yesOrNoValue(value: boolean | undefined): string | undefined {
+    if (value === undefined) {
+        return undefined;
+    }
+
+    return value ? '1' : '0';
+}
 
 function RequiredMark() {
     return (
@@ -80,15 +95,29 @@ function SegmentedChoice({
     label,
     options,
     defaultValue,
+    description,
+    error,
 }: {
-    name: 'operation' | 'type';
+    name: 'operation' | 'type' | 'has_garage' | 'is_furnished';
     label: string;
     options: ReadonlyArray<{ value: string; label: string }>;
-    defaultValue: string;
+    defaultValue?: string;
+    description?: string;
+    error?: string;
 }) {
+    const describedBy =
+        [description && `${name}-description`, error && `${name}-error`]
+            .filter(Boolean)
+            .join(' ') || undefined;
+
     return (
-        <div className="grid gap-2">
-            <span className="text-[13px] font-semibold">
+        <div
+            className="grid gap-2"
+            role="group"
+            aria-labelledby={`${name}-label`}
+            aria-describedby={describedBy}
+        >
+            <span id={`${name}-label`} className="text-[13px] font-semibold">
                 {label}
                 <RequiredMark />
             </span>
@@ -108,6 +137,14 @@ function SegmentedChoice({
                     </label>
                 ))}
             </div>
+            {description !== undefined && (
+                <p
+                    id={`${name}-description`}
+                    className="text-xs leading-relaxed text-muted-foreground"
+                >
+                    {description}
+                </p>
+            )}
         </div>
     );
 }
@@ -160,18 +197,20 @@ export default function PropertyFormFields({
                 title="Información general"
                 description="Cuéntanos qué tipo de propiedad vas a publicar."
             >
-                <div className="grid gap-4 sm:grid-cols-2">
+                <div className="grid items-start gap-4 sm:grid-cols-2">
                     <SegmentedChoice
                         name="operation"
                         label="Operación"
                         options={propertyOperationOptions}
                         defaultValue={defaults.operation ?? 'sale'}
+                        error={errors.operation}
                     />
                     <SegmentedChoice
                         name="type"
                         label="Tipo de propiedad"
                         options={propertyTypeOptions}
                         defaultValue={defaults.type ?? 'house'}
+                        error={errors.type}
                     />
                 </div>
 
@@ -220,8 +259,8 @@ export default function PropertyFormFields({
                     <InputError message={errors.description} />
                 </div>
 
-                <InputError message={errors.operation} />
-                <InputError message={errors.type} />
+                <InputError id="operation-error" message={errors.operation} />
+                <InputError id="type-error" message={errors.type} />
             </PropertySection>
 
             <PropertySection
@@ -342,6 +381,37 @@ export default function PropertyFormFields({
                             className="h-11 rounded-lg bg-card px-2 text-sm shadow-none sm:px-3"
                         />
                         <InputError message={errors.area} />
+                    </div>
+                </div>
+
+                <div className="grid items-start gap-4 sm:grid-cols-2">
+                    <div className="grid gap-2">
+                        <SegmentedChoice
+                            name="has_garage"
+                            label="Garaje"
+                            options={yesOrNoOptions}
+                            defaultValue={yesOrNoValue(defaults.has_garage)}
+                            description="La propiedad incluye un espacio de estacionamiento, techado o no."
+                            error={errors.has_garage}
+                        />
+                        <InputError
+                            id="has_garage-error"
+                            message={errors.has_garage}
+                        />
+                    </div>
+
+                    <div className="grid gap-2">
+                        <SegmentedChoice
+                            name="is_furnished"
+                            label="Amueblado"
+                            options={yesOrNoOptions}
+                            defaultValue={yesOrNoValue(defaults.is_furnished)}
+                            error={errors.is_furnished}
+                        />
+                        <InputError
+                            id="is_furnished-error"
+                            message={errors.is_furnished}
+                        />
                     </div>
                 </div>
             </PropertySection>
