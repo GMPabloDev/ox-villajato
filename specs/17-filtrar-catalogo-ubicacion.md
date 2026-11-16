@@ -66,7 +66,7 @@
 
 ## Riesgos
 
-| Riesgo | Mitigación |
-| --- | --- |
+| Riesgo                                                                                                             | Mitigación                                                                                                                           |
+| ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------------------------------------------------------------------------------ |
 | La SPEC 16 figura implementada, pero su criterio sobre la vigencia de la fuente del catálogo permanece sin marcar. | Esta spec usa el catálogo existente y no afirma que su vigencia esté verificada. La comprobación pendiente corresponde a la SPEC 16. |
-| Un enlace por distrito puede dejar de funcionar al introducir niveles superiores obligatorios en la interfaz. | Resolver provincia y departamento a partir del distrito y cubrir el enlace existente con pruebas. |
+| Un enlace por distrito puede dejar de funcionar al introducir niveles superiores obligatorios en la interfaz.      | Resolver provincia y departamento a partir del distrito y cubrir el enlace existente con pruebas.                                    |
