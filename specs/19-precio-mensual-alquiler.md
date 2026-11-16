@@ -1,6 +1,6 @@
 # SPEC 19 — Precio mensual de alquiler
 
-> **Estado:** Aprobada
+> **Estado:** Implementada
 > **Depende de:** SPEC 01, SPEC 04, SPEC 14
 > **Fecha:** 2026-11-15
 > **Objetivo:** Registrar y mostrar el precio de alquiler como un importe mensual, conservando un único precio por propiedad.
@@ -44,15 +44,15 @@
 
 ## Criterios de aceptación
 
-- [ ] Al publicar o editar un alquiler, el formulario muestra «Precio mensual»; para una venta muestra «Precio».
-- [ ] Al cambiar la operación en cualquier sentido, la etiqueta cambia y el importe y la moneda introducidos se conservan. Al editar se precargan los valores guardados.
-- [ ] El servidor sigue exigiendo un precio numérico mayor que cero y una moneda válida. Rechaza los datos inválidos sin guardar cambios.
-- [ ] Un alquiler se guarda con un único precio en PEN o USD, sin conversión. Una venta conserva su precio total.
-- [ ] Un alquiler existente conserva su importe y moneda y se presenta como mensual, sin migración ni eliminación de propiedades.
-- [ ] Las tarjetas del catálogo, la ficha pública y su barra móvil muestran «/ mes» junto al precio de alquiler. Ninguna muestra ese sufijo para venta.
-- [ ] El listado y el detalle del panel y las tarjetas de propiedades archivadas muestran «/ mes» junto al precio de alquiler y no lo muestran para venta.
-- [ ] Los filtros y el orden por precio del panel mantienen su comportamiento actual, incluida la comparación de importes de venta y alquiler cuando no se filtra por operación.
-- [ ] Pasan las pruebas afectadas y se comprueban en navegador el alta, la edición y las vistas indicadas, incluida la ficha móvil.
+- [x] Al publicar o editar un alquiler, el formulario muestra «Precio mensual»; para una venta muestra «Precio».
+- [x] Al cambiar la operación en cualquier sentido, la etiqueta cambia y el importe y la moneda introducidos se conservan. Al editar se precargan los valores guardados.
+- [x] El servidor sigue exigiendo un precio numérico mayor que cero y una moneda válida. Rechaza los datos inválidos sin guardar cambios.
+- [x] Un alquiler se guarda con un único precio en PEN o USD, sin conversión. Una venta conserva su precio total.
+- [x] Un alquiler existente conserva su importe y moneda y se presenta como mensual, sin migración ni eliminación de propiedades.
+- [x] Las tarjetas del catálogo, la ficha pública y su barra móvil muestran «/ mes» junto al precio de alquiler. Ninguna muestra ese sufijo para venta.
+- [x] El listado y el detalle del panel y las tarjetas de propiedades archivadas muestran «/ mes» junto al precio de alquiler y no lo muestran para venta.
+- [x] Los filtros y el orden por precio del panel mantienen su comportamiento actual, incluida la comparación de importes de venta y alquiler cuando no se filtra por operación.
+- [x] Pasan las pruebas afectadas y se comprueban en navegador el alta, la edición y las vistas indicadas, incluida la ficha móvil.
 
 ## Decisiones
 
@@ -65,8 +65,8 @@
 
 ## Riesgos
 
-| Riesgo | Mitigación |
-| --- | --- |
-| Un precio de alquiler existente no corresponde a un importe mensual. | Se conserva y se considera mensual según la decisión acordada; la revisión individual queda fuera de esta historia. |
-| Al cambiar la operación, el importe conservado puede no ser adecuado para la nueva operación. | La etiqueta cambia de inmediato y permite corregir el importe antes de guardar. |
-| El filtro y el orden del panel pueden comparar alquileres mensuales con precios totales de venta. | Se conserva el filtro por operación existente para limitar los resultados cuando sea necesario. |
+| Riesgo                                                                                            | Mitigación                                                                                                          |
+| ------------------------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------------------------- |
+| Un precio de alquiler existente no corresponde a un importe mensual.                              | Se conserva y se considera mensual según la decisión acordada; la revisión individual queda fuera de esta historia. |
+| Al cambiar la operación, el importe conservado puede no ser adecuado para la nueva operación.     | La etiqueta cambia de inmediato y permite corregir el importe antes de guardar.                                     |
+| El filtro y el orden del panel pueden comparar alquileres mensuales con precios totales de venta. | Se conserva el filtro por operación existente para limitar los resultados cuando sea necesario.                     |
