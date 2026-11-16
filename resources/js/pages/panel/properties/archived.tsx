@@ -112,7 +112,10 @@ export default function ArchivedProperties({
                         </p>
                     </div>
                 ) : (
-                    <ul className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                    <ul
+                        data-test="archived-properties"
+                        className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3"
+                    >
                         {properties.map((property) => (
                             <PanelPropertyCard
                                 key={property.id}

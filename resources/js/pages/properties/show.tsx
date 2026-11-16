@@ -191,8 +191,16 @@ export default function PropertyShow({ property }: { property: Property }) {
                         <p className="text-xs text-muted-foreground">
                             Precio de {operationNoun}
                         </p>
-                        <p className="mt-2 font-display text-[27px] leading-none font-bold">
+                        <p
+                            data-test="property-price"
+                            className="mt-2 font-display text-[27px] leading-none font-bold"
+                        >
                             {property.price_formatted}
+                            {property.operation === 'rent' && (
+                                <span className="ml-1.5 text-[11px] font-normal text-muted-foreground">
+                                    / mes
+                                </span>
+                            )}
                         </p>
 
                         <hr className="my-[22px] border-t border-border" />
@@ -335,8 +343,16 @@ export default function PropertyShow({ property }: { property: Property }) {
             </PublicContainer>
 
             <div className="sticky bottom-0 z-30 flex items-center justify-between gap-4 border-t border-border bg-card px-5 py-3 shadow-[0_-6px_24px_rgba(25,47,48,0.07)] lg:hidden">
-                <strong className="font-display text-[17px] font-bold">
+                <strong
+                    data-test="property-mobile-price"
+                    className="font-display text-[17px] font-bold"
+                >
                     {property.price_formatted}
+                    {property.operation === 'rent' && (
+                        <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                            / mes
+                        </span>
+                    )}
                 </strong>
                 <a
                     href="#consulta"
