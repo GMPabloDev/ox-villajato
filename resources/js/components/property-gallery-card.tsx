@@ -1,11 +1,13 @@
 import { Link } from '@inertiajs/react';
 import { Building2 } from 'lucide-react';
+import type { PropertyOperationValue } from '@/lib/property-options';
 import { locationLabel } from '@/lib/ubigeo';
 import { cn } from '@/lib/utils';
 
 type PropertyGalleryProperty = {
     id: number;
     title: string;
+    operation: PropertyOperationValue;
     operation_label: string;
     type_label: string;
     price_formatted: string;
@@ -103,8 +105,16 @@ export default function PropertyGalleryCard({
                 </p>
 
                 <div className="mt-9 flex flex-wrap items-center justify-between gap-3 border-t border-border pt-4">
-                    <strong className="font-display text-[19px] font-bold">
+                    <strong
+                        data-test="gallery-price"
+                        className="font-display text-[19px] font-bold"
+                    >
                         {property.price_formatted}
+                        {property.operation === 'rent' && (
+                            <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                                / mes
+                            </span>
+                        )}
                     </strong>
                     <Link
                         href={property.url}

@@ -17,6 +17,7 @@ import {
     propertyCurrencyOptions,
     propertyOperationOptions,
     propertyTypeOptions,
+    type PropertyOperationValue,
 } from '@/lib/property-options';
 
 export type PropertyFormDefaults = {
@@ -47,6 +48,10 @@ function yesOrNoValue(value: boolean | undefined): string | undefined {
     }
 
     return value ? '1' : '0';
+}
+
+function selectedOperation(value: string | undefined): PropertyOperationValue {
+    return value === 'rent' ? 'rent' : 'sale';
 }
 
 function RequiredMark() {
@@ -97,6 +102,8 @@ function SegmentedChoice({
     defaultValue,
     description,
     error,
+    value,
+    onChange,
 }: {
     name: 'operation' | 'type' | 'has_garage' | 'is_furnished';
     label: string;
@@ -104,6 +111,8 @@ function SegmentedChoice({
     defaultValue?: string;
     description?: string;
     error?: string;
+    value?: string;
+    onChange?: (value: string) => void;
 }) {
     const describedBy =
         [description && `${name}-description`, error && `${name}-error`]
@@ -122,20 +131,30 @@ function SegmentedChoice({
                 <RequiredMark />
             </span>
             <div className="grid grid-cols-2 gap-2">
-                {options.map((option) => (
-                    <label key={option.value} className="relative min-w-0">
-                        <input
-                            type="radio"
-                            name={name}
-                            value={option.value}
-                            defaultChecked={defaultValue === option.value}
-                            className="peer sr-only"
-                        />
-                        <span className="flex h-11 cursor-pointer items-center justify-center rounded-lg border border-input bg-card px-2 text-center text-[13px] font-semibold text-muted-foreground transition-colors peer-checked:border-primary peer-checked:bg-secondary peer-checked:text-secondary-foreground peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50">
-                            {option.label}
-                        </span>
-                    </label>
-                ))}
+                {options.map((option) => {
+                    const selection =
+                        value === undefined
+                            ? { defaultChecked: defaultValue === option.value }
+                            : {
+                                  checked: value === option.value,
+                                  onChange: () => onChange?.(option.value),
+                              };
+
+                    return (
+                        <label key={option.value} className="relative min-w-0">
+                            <input
+                                type="radio"
+                                name={name}
+                                value={option.value}
+                                {...selection}
+                                className="peer sr-only"
+                            />
+                            <span className="flex h-11 cursor-pointer items-center justify-center rounded-lg border border-input bg-card px-2 text-center text-[13px] font-semibold text-muted-foreground transition-colors peer-checked:border-primary peer-checked:bg-secondary peer-checked:text-secondary-foreground peer-focus-visible:ring-[3px] peer-focus-visible:ring-ring/50">
+                                {option.label}
+                            </span>
+                        </label>
+                    );
+                })}
             </div>
             {description !== undefined && (
                 <p
@@ -190,6 +209,11 @@ export default function PropertyFormFields({
     defaults?: PropertyFormDefaults;
     location: UbigeoCatalogState;
 }) {
+    const [operation, setOperation] = useState<PropertyOperationValue>(() =>
+        selectedOperation(defaults.operation),
+    );
+    const priceLabel = operation === 'rent' ? 'Precio mensual' : 'Precio';
+
     return (
         <>
             <PropertySection
@@ -202,7 +226,10 @@ export default function PropertyFormFields({
                         name="operation"
                         label="Operación"
                         options={propertyOperationOptions}
-                        defaultValue={defaults.operation ?? 'sale'}
+                        value={operation}
+                        onChange={(value) =>
+                            setOperation(selectedOperation(value))
+                        }
                         error={errors.operation}
                     />
                     <SegmentedChoice
@@ -273,7 +300,7 @@ export default function PropertyFormFields({
                         htmlFor="price"
                         className="text-[13px] font-semibold"
                     >
-                        Precio
+                        {priceLabel}
                         <RequiredMark />
                     </Label>
                     <div className="flex">

@@ -1,9 +1,11 @@
 import type { ReactNode } from 'react';
 import { Building2 } from 'lucide-react';
+import type { PropertyOperationValue } from '@/lib/property-options';
 
 export type PanelPropertyCardData = {
     id: number;
     title: string;
+    operation: PropertyOperationValue;
     price_formatted: string;
     cover_photo_url: string | null;
 };
@@ -56,8 +58,13 @@ export function PanelPropertyCard({
                     </div>
                 )}
                 {metadata}
-                <p className="text-lg font-semibold">
+                <p data-test="archived-price" className="text-lg font-semibold">
                     {property.price_formatted}
+                    {property.operation === 'rent' && (
+                        <span className="ml-1 text-[11px] font-normal text-muted-foreground">
+                            / mes
+                        </span>
+                    )}
                 </p>
                 {children}
             </div>

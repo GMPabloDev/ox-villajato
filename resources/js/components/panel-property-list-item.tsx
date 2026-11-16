@@ -59,7 +59,10 @@ export function PanelPropertyListItem({
                         {locationLabel(property)}
                     </span>
                     <span className="mt-2 flex flex-wrap items-center justify-between gap-2">
-                        <span className="text-[13px] font-semibold tabular-nums">
+                        <span
+                            data-test="list-price"
+                            className="text-[13px] font-semibold tabular-nums"
+                        >
                             {property.price_formatted}
                             {property.operation === 'rent' && (
                                 <span className="ml-1 text-[10px] font-normal text-muted-foreground">

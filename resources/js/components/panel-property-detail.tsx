@@ -142,10 +142,12 @@ export function PanelPropertyDetail({
                 <span>{locationLabel(property)}</span>
             </p>
 
-            <p className="mt-5 text-[25px] font-semibold tracking-[-0.8px] tabular-nums">
+            <p
+                data-test="detail-price"
+                className="mt-5 text-[25px] font-semibold tracking-[-0.8px] tabular-nums"
+            >
                 {property.price_formatted}
                 <span className="ml-1.5 text-[11px] font-normal tracking-normal text-muted-foreground">
-                    {property.currency}
                     {isRent ? ' / mes' : ''}
                 </span>
             </p>

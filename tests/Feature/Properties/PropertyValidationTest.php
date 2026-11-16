@@ -208,6 +208,52 @@ class PropertyValidationTest extends TestCase
         ]);
     }
 
+    public function test_editing_without_a_price_reports_the_error_and_keeps_the_saved_price_and_currency(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        $property = Property::factory()->for($agent)->create([
+            'title' => 'Departamento en alquiler amoblado',
+            'operation' => 'rent',
+            'price' => 1500,
+            'currency' => 'USD',
+            'district_code' => '150122',
+        ]);
+
+        $photo = $property->photos()->create([
+            'path' => 'properties/cover.jpg',
+            'position' => 1,
+        ]);
+
+        $response = $this->actingAs($agent)
+            ->from(route('panel.properties.index'))
+            ->put(route('panel.properties.update', $property), [
+                'operation' => 'rent',
+                'type' => 'house',
+                'title' => 'Departamento en alquiler amoblado',
+                'description' => 'Departamento luminoso con vista al parque.',
+                'currency' => 'USD',
+                ...$this->propertyLocation('150122'),
+                'bedrooms' => 2,
+                'bathrooms' => 1,
+                'area' => 80,
+                'has_garage' => false,
+                'is_furnished' => true,
+                'photo_order' => [$photo->id],
+            ]);
+
+        $response
+            ->assertRedirect(route('panel.properties.index'))
+            ->assertSessionHasErrors(['price' => 'El campo precio es obligatorio.']);
+
+        $this->assertDatabaseHas('properties', [
+            'id' => $property->id,
+            'operation' => 'rent',
+            'price' => 1500,
+            'currency' => 'USD',
+        ]);
+    }
+
     public static function invalidScalarValues(): array
     {
         return [

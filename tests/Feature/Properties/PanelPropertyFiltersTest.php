@@ -544,6 +544,54 @@ class PanelPropertyFiltersTest extends TestCase
         );
     }
 
+    public function test_price_range_and_sort_compare_rent_and_sale_amounts_without_an_operation_filter(): void
+    {
+        $agent = User::factory()->agent()->create();
+
+        Property::factory()->for($agent)->create([
+            'title' => 'Casa en venta en Miraflores',
+            'operation' => 'sale',
+            'price' => 250000,
+            'currency' => 'PEN',
+        ]);
+        Property::factory()->for($agent)->create([
+            'title' => 'Departamento en alquiler en Barranco',
+            'operation' => 'rent',
+            'price' => 1500,
+            'currency' => 'PEN',
+        ]);
+        Property::factory()->for($agent)->create([
+            'title' => 'Departamento en alquiler en dólares',
+            'operation' => 'rent',
+            'price' => 900,
+            'currency' => 'USD',
+        ]);
+
+        $sorted = $this->actingAs($agent)->get(route('panel.properties.index', [
+            'currency' => 'PEN',
+            'sort' => 'price-asc',
+        ]));
+
+        $sorted->assertOk();
+
+        $this->assertSame(
+            ['Departamento en alquiler en Barranco', 'Casa en venta en Miraflores'],
+            collect($sorted->inertiaProps('properties.data'))->pluck('title')->all(),
+        );
+
+        $filtered = $this->actingAs($agent)->get(route('panel.properties.index', [
+            'currency' => 'PEN',
+            'min_price' => 10000,
+        ]));
+
+        $filtered->assertOk();
+
+        $this->assertSame(
+            ['Casa en venta en Miraflores'],
+            collect($filtered->inertiaProps('properties.data'))->pluck('title')->all(),
+        );
+    }
+
     public function test_price_ranges_and_price_sort_without_a_currency_are_ignored(): void
     {
         $agent = User::factory()->agent()->create();

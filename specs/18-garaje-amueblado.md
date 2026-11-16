@@ -68,7 +68,7 @@
 
 ## Riesgos
 
-| Riesgo | Mitigación |
-| --- | --- |
+| Riesgo                                                                            | Mitigación                                                                      |
+| --------------------------------------------------------------------------------- | ------------------------------------------------------------------------------- |
 | Una propiedad real existente no tiene valores verificados para los nuevos campos. | Detener la migración en producción y acordar el tratamiento antes de continuar. |
-| El borrado de propiedades de desarrollo puede afectar consultas históricas. | Conservar las consultas y verificar su persistencia tras el borrado. |
+| El borrado de propiedades de desarrollo puede afectar consultas históricas.       | Conservar las consultas y verificar su persistencia tras el borrado.            |
