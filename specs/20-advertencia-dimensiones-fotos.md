@@ -1,6 +1,6 @@
 # SPEC 20 — Advertencia por dimensiones de fotos
 
-> **Estado:** Aprobada
+> **Estado:** Implementada
 > **Depende de:** SPEC 01, SPEC 04
 > **Fecha:** 2026-11-15
 > **Objetivo:** Advertir al seleccionar fotos que no cumplen las recomendaciones de dimensiones o proporción, sin impedir su publicación.
@@ -42,16 +42,16 @@
 
 ## Criterios de aceptación
 
-- [ ] Al publicar o editar, seleccionar o arrastrar una foto nueva inicia la revisión y muestra las recomendaciones de 3:2, mínimo 1600 × 1067 e ideal 2000 × 1333 píxeles.
-- [ ] Una foto de 1600 × 1067 no recibe aviso de tamaño. Una de 1599 × 1067 o 1600 × 1066 sí lo recibe. Una foto que cumple el mínimo no recibe aviso solo por estar debajo del ideal.
-- [ ] Una foto cuya relación ancho/alto esté entre 1,425 y 1,575, incluidos ambos extremos, no recibe aviso de proporción. Una foto fuera de ese intervalo sí lo recibe, incluidas las cuadradas y verticales.
-- [ ] Cada foto muestra junto a su miniatura los motivos que le corresponden. Si incumple tamaño y proporción, muestra ambos. Los avisos permiten identificar la foto sin depender solo del color.
-- [ ] Al reordenar fotos, cada aviso sigue asociado a su foto. Al quitar una foto, desaparece su aviso y una lectura pendiente o tardía de esa foto no mantiene bloqueado el envío ni modifica otra foto.
-- [ ] Mientras alguna foto nueva seleccionada se revisa, el formulario indica que está revisando y no envía la propiedad. Al terminar todas las revisiones, permite guardar sin confirmación adicional, aunque existan advertencias.
-- [ ] Si falla o no termina la lectura de una foto, el formulario indica que no pudo comprobar sus dimensiones y permite continuar. El servidor mantiene la validación de imagen existente.
-- [ ] Una foto con advertencia que cumple las validaciones existentes puede guardarse al publicar o editar. Las fotos guardadas previamente no reciben una revisión retroactiva al abrir la edición.
-- [ ] Se mantienen las restricciones de 1 a 8 fotos, JPG, PNG o WebP y un máximo de 5 MB por foto, así como las reglas y los errores actuales del servidor.
-- [ ] Pasan las pruebas afectadas y se comprueban los avisos, la revisión y el guardado en navegador, tanto en móvil como en escritorio.
+- [x] Al publicar o editar, seleccionar o arrastrar una foto nueva inicia la revisión y muestra las recomendaciones de 3:2, mínimo 1600 × 1067 e ideal 2000 × 1333 píxeles.
+- [x] Una foto de 1600 × 1067 no recibe aviso de tamaño. Una de 1599 × 1067 o 1600 × 1066 sí lo recibe. Una foto que cumple el mínimo no recibe aviso solo por estar debajo del ideal.
+- [x] Una foto cuya relación ancho/alto esté entre 1,425 y 1,575, incluidos ambos extremos, no recibe aviso de proporción. Una foto fuera de ese intervalo sí lo recibe, incluidas las cuadradas y verticales.
+- [x] Cada foto muestra junto a su miniatura los motivos que le corresponden. Si incumple tamaño y proporción, muestra ambos. Los avisos permiten identificar la foto sin depender solo del color.
+- [x] Al reordenar fotos, cada aviso sigue asociado a su foto. Al quitar una foto, desaparece su aviso y una lectura pendiente o tardía de esa foto no mantiene bloqueado el envío ni modifica otra foto.
+- [x] Mientras alguna foto nueva seleccionada se revisa, el formulario indica que está revisando y no envía la propiedad. Al terminar todas las revisiones, permite guardar sin confirmación adicional, aunque existan advertencias.
+- [x] Si falla o no termina la lectura de una foto, el formulario indica que no pudo comprobar sus dimensiones y permite continuar. El servidor mantiene la validación de imagen existente.
+- [x] Una foto con advertencia que cumple las validaciones existentes puede guardarse al publicar o editar. Las fotos guardadas previamente no reciben una revisión retroactiva al abrir la edición.
+- [x] Se mantienen las restricciones de 1 a 8 fotos, JPG, PNG o WebP y un máximo de 5 MB por foto, así como las reglas y los errores actuales del servidor.
+- [x] Pasan las pruebas afectadas y se comprueban los avisos, la revisión y el guardado en navegador, tanto en móvil como en escritorio.
 
 ## Decisiones
 
