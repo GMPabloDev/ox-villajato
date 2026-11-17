@@ -1,5 +1,6 @@
 import { Form } from '@inertiajs/react';
 import { X } from 'lucide-react';
+import { useState } from 'react';
 import {
     store,
     update,
@@ -43,6 +44,15 @@ export default function PropertyFormSheet({
     const defaults: PropertyFormDefaults = property ?? {};
     const location = useUbigeoCatalog();
     const isLocationReady = location.status === 'ready';
+    const [arePhotosUnderReview, setArePhotosUnderReview] = useState(false);
+
+    let submitHint = '* Campos obligatorios';
+
+    if (location.status === 'error') {
+        submitHint = 'Reintenta la carga de ubicaciones para guardar.';
+    } else if (arePhotosUnderReview) {
+        submitHint = 'Revisando las dimensiones de las fotos nuevas…';
+    }
 
     return (
         <Sheet open={open} onOpenChange={onOpenChange}>
@@ -102,6 +112,9 @@ export default function PropertyFormSheet({
                                         <PropertyPhotoFields
                                             errors={errors}
                                             existingPhotos={property?.photos}
+                                            onReviewPendingChange={
+                                                setArePhotosUnderReview
+                                            }
                                         />
                                     </PropertySection>
                                 </div>
@@ -110,9 +123,7 @@ export default function PropertyFormSheet({
                             <SheetFooter className="border-t border-border bg-card px-5 py-4 sm:px-7">
                                 <div className="flex w-full flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
                                     <p className="text-xs text-muted-foreground">
-                                        {location.status === 'error'
-                                            ? 'Reintenta la carga de ubicaciones para guardar.'
-                                            : '* Campos obligatorios'}
+                                        {submitHint}
                                     </p>
                                     <div className="flex w-full gap-2 sm:w-auto">
                                         <Button
@@ -128,7 +139,9 @@ export default function PropertyFormSheet({
                                             type="submit"
                                             className="flex-1 sm:flex-none"
                                             disabled={
-                                                processing || !isLocationReady
+                                                processing ||
+                                                !isLocationReady ||
+                                                arePhotosUnderReview
                                             }
                                         >
                                             {processing && <Spinner />}
