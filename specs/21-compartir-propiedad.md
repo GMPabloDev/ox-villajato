@@ -42,17 +42,17 @@
 
 ## Criterios de aceptación
 
-- [ ] Un visitante sin sesión puede abrir «Compartir» junto al título de una ficha pública y encontrar correo, WhatsApp, Facebook, X y copiar enlace en móvil y escritorio.
-- [ ] El botón y sus opciones tienen nombres accesibles y se pueden usar con teclado y lector de pantalla.
-- [ ] Todas las opciones usan la URL absoluta de la ficha, sin los parámetros ni el fragmento presentes en la navegación actual. El enlace abre esa propiedad sin exigir inicio de sesión mientras esté disponible.
-- [ ] La opción de correo abre el cliente configurado con el título y el enlace preparados. No envía el mensaje desde la aplicación ni indica que ya fue enviado.
+- [x] Un visitante sin sesión puede abrir «Compartir» junto al título de una ficha pública y encontrar correo, WhatsApp, Facebook, X y copiar enlace en móvil y escritorio.
+- [x] El botón y sus opciones tienen nombres accesibles y se pueden usar con teclado y lector de pantalla.
+- [x] Todas las opciones usan la URL absoluta de la ficha, sin los parámetros ni el fragmento presentes en la navegación actual. El enlace abre esa propiedad sin exigir inicio de sesión mientras esté disponible.
+- [x] La opción de correo abre el cliente configurado con el título y el enlace preparados. No envía el mensaje desde la aplicación ni indica que ya fue enviado.
 - [ ] WhatsApp y X reciben el título y el enlace preparados. Facebook recibe el enlace de la propiedad. Los caracteres especiales del título y de la URL se transmiten correctamente.
 - [ ] WhatsApp, Facebook y X se abren en otra pestaña. La ficha original permanece abierta.
-- [ ] Si la copia tiene éxito, la interfaz lo confirma. Si falla o no está disponible, informa del fallo y ofrece el enlace seleccionable para copiarlo manualmente.
-- [ ] Una petición HTTP inicial a la ficha devuelve metadatos de vista previa con título, fragmento de descripción, URL absoluta y URL de la portada, sin necesitar JavaScript. Los valores con caracteres especiales no alteran el HTML.
-- [ ] Si no hay portada en los datos, la ficha y las opciones para compartir siguen funcionando y no se anuncia una imagen inexistente en los metadatos.
-- [ ] La URL pública de una propiedad vendida, alquilada, archivada o eliminada mantiene la respuesta 404 existente.
-- [ ] Pasan las pruebas afectadas de servidor y navegador, incluidos los recorridos de compartir y el fallo de copia.
+- [x] Si la copia tiene éxito, la interfaz lo confirma. Si falla o no está disponible, informa del fallo y ofrece el enlace seleccionable para copiarlo manualmente.
+- [x] Una petición HTTP inicial a la ficha devuelve metadatos de vista previa con título, fragmento de descripción, URL absoluta y URL de la portada, sin necesitar JavaScript. Los valores con caracteres especiales no alteran el HTML.
+- [x] Si no hay portada en los datos, la ficha y las opciones para compartir siguen funcionando y no se anuncia una imagen inexistente en los metadatos.
+- [x] La URL pública de una propiedad vendida, alquilada, archivada o eliminada mantiene la respuesta 404 existente.
+- [x] Pasan las pruebas afectadas de servidor y navegador, incluidos los recorridos de compartir y el fallo de copia.
 
 ## Decisiones
 

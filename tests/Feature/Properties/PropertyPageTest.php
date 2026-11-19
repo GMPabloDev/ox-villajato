@@ -86,6 +86,58 @@ class PropertyPageTest extends TestCase
             );
     }
 
+    public function test_initial_html_contains_escaped_preview_metadata_and_canonical_property_url(): void
+    {
+        $property = Property::factory()->create([
+            'title' => 'Casa "Sol" & <mar>',
+            'description' => 'Vista & jardín <privado> "amplio".',
+        ]);
+        $property->photos()->createMany([
+            ['path' => 'properties/cover.jpg', 'position' => 1],
+            ['path' => 'properties/second.jpg', 'position' => 2],
+        ]);
+
+        $response = $this->get(route('properties.show', $property).'?source=mail');
+
+        $response->assertOk()
+            ->assertSee('property="og:title" content="Casa &quot;Sol&quot; &amp; &lt;mar&gt;"', false)
+            ->assertSee('property="og:description" content="Vista &amp; jardín &lt;privado&gt; &quot;amplio&quot;."', false)
+            ->assertSee('property="og:url" content="'.route('properties.show', $property).'"', false)
+            ->assertSee('property="og:image" content="'.Storage::disk('public')->url('properties/cover.jpg').'"', false);
+    }
+
+    public function test_preview_omits_missing_cover_and_limits_long_descriptions(): void
+    {
+        $property = Property::factory()->create(['description' => str_repeat('a', 220)]);
+
+        $this->get(route('properties.show', $property))
+            ->assertOk()
+            ->assertSee('property="og:description" content="'.str_repeat('a', 200).'..."', false)
+            ->assertDontSee('property="og:image"', false);
+    }
+
+    public function test_inertia_navigation_still_returns_property_data(): void
+    {
+        $property = Property::factory()->create();
+
+        $version = $this->get(route('properties.show', $property))->viewData('page')['version'];
+
+        $this->get(route('properties.show', $property), ['X-Inertia' => 'true', 'X-Inertia-Version' => $version])
+            ->assertOk()
+            ->assertJsonPath('component', 'properties/show')
+            ->assertJsonPath('props.property.id', $property->id)
+            ->assertJsonPath('props.property.url', route('properties.show', $property));
+    }
+
+    public function test_deleted_property_page_returns_not_found(): void
+    {
+        $property = Property::factory()->create();
+        $url = route('properties.show', $property);
+        $property->delete();
+
+        $this->get($url)->assertNotFound();
+    }
+
     public function test_archived_property_page_returns_not_found(): void
     {
         $property = Property::factory()->create([

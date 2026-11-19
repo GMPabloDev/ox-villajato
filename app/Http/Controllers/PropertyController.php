@@ -901,8 +901,15 @@ class PropertyController extends Controller
     {
         $property->load('photos', 'district.province.department');
 
+        $propertyData = (new PropertyResource($property))->resolve();
+
         return Inertia::render('properties/show', [
-            'property' => (new PropertyResource($property))->resolve(),
+            'property' => $propertyData,
+        ])->withViewData('propertyPreview', [
+            'title' => $propertyData['title'],
+            'description' => Str::limit($propertyData['description'], 200),
+            'url' => $propertyData['url'],
+            'image' => $propertyData['cover_photo_url'],
         ]);
     }
 }

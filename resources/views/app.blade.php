@@ -3,6 +3,14 @@
     <head>
         <meta charset="utf-8">
         <meta name="viewport" content="width=device-width, initial-scale=1">
+        @isset($propertyPreview)
+            <meta data-inertia="preview-title" property="og:title" content="{{ $propertyPreview['title'] }}">
+            <meta data-inertia="preview-description" property="og:description" content="{{ $propertyPreview['description'] }}">
+            <meta data-inertia="preview-url" property="og:url" content="{{ $propertyPreview['url'] }}">
+            @if ($propertyPreview['image'] !== null)
+                <meta data-inertia="preview-image" property="og:image" content="{{ $propertyPreview['image'] }}">
+            @endif
+        @endisset
 
         {{-- Inline script to detect system dark mode preference and apply it immediately --}}
         <script>
